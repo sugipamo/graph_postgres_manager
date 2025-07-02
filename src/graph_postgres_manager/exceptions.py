@@ -49,3 +49,13 @@ class RetryExhaustedError(GraphPostgresManagerException):
     def __init__(self, message: str, last_error: Optional[Exception] = None):
         super().__init__(message)
         self.last_error = last_error
+
+
+class SchemaError(GraphPostgresManagerException):
+    """Raised when schema-related operations fail."""
+    pass
+
+
+class MetadataError(GraphPostgresManagerException):
+    """Raised when metadata operations fail."""
+    pass

@@ -10,6 +10,7 @@ from .connections import Neo4jConnection, PostgresConnection
 from .exceptions import GraphPostgresManagerException, HealthCheckError
 from .models import HealthStatus
 from .transactions import TransactionManager
+from .metadata import SchemaManager, IndexManager, StatsCollector
 
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,9 @@ class GraphPostgresManager:
         self._health_check_task: Optional[asyncio.Task] = None
         self._is_initialized = False
         self._transaction_manager: Optional[TransactionManager] = None
+        self._schema_manager: Optional[SchemaManager] = None
+        self._index_manager: Optional[IndexManager] = None
+        self._stats_collector: Optional[StatsCollector] = None
     
     async def initialize(self) -> None:
         """Initialize all connections."""
@@ -58,6 +62,14 @@ class GraphPostgresManager:
             enable_two_phase_commit=getattr(self.config, 'enable_two_phase_commit', False),
             enable_logging=getattr(self.config, 'enable_transaction_logging', False)
         )
+        
+        # Initialize metadata managers
+        self._schema_manager = SchemaManager(self.postgres)
+        self._index_manager = IndexManager(self.postgres)
+        self._stats_collector = StatsCollector(self.postgres)
+        
+        # Initialize metadata schema
+        await self._schema_manager.initialize_metadata_schema()
         
         self._is_initialized = True
         logger.info("GraphPostgresManager initialized successfully")
@@ -278,3 +290,89 @@ class GraphPostgresManager:
             raise GraphPostgresManagerException("Transaction manager not available")
         
         return self._transaction_manager.transaction(timeout)
+    
+    # Metadata Management APIs
+    
+    @property
+    def schema_manager(self) -> SchemaManager:
+        """Get the schema manager instance.
+        
+        Returns:
+            SchemaManager instance
+            
+        Raises:
+            GraphPostgresManagerException: If manager not initialized
+        """
+        if not self._is_initialized or not self._schema_manager:
+            raise GraphPostgresManagerException("Manager not initialized")
+        return self._schema_manager
+    
+    @property
+    def index_manager(self) -> IndexManager:
+        """Get the index manager instance.
+        
+        Returns:
+            IndexManager instance
+            
+        Raises:
+            GraphPostgresManagerException: If manager not initialized
+        """
+        if not self._is_initialized or not self._index_manager:
+            raise GraphPostgresManagerException("Manager not initialized")
+        return self._index_manager
+    
+    @property
+    def stats_collector(self) -> StatsCollector:
+        """Get the stats collector instance.
+        
+        Returns:
+            StatsCollector instance
+            
+        Raises:
+            GraphPostgresManagerException: If manager not initialized
+        """
+        if not self._is_initialized or not self._stats_collector:
+            raise GraphPostgresManagerException("Manager not initialized")
+        return self._stats_collector
+    
+    async def get_postgres_schema_info(self, schema_name: str = 'public') -> Dict[str, Any]:
+        """Get PostgreSQL schema information.
+        
+        Args:
+            schema_name: Name of the schema to inspect
+            
+        Returns:
+            Dictionary with schema information
+        """
+        if not self._is_initialized:
+            raise GraphPostgresManagerException("Manager not initialized")
+        
+        return await self.schema_manager.get_schema_info(schema_name)
+    
+    async def analyze_postgres_indexes(self, schema_name: str = 'public') -> Dict[str, Any]:
+        """Analyze PostgreSQL index usage and provide recommendations.
+        
+        Args:
+            schema_name: Schema to analyze
+            
+        Returns:
+            Dictionary with index analysis results
+        """
+        if not self._is_initialized:
+            raise GraphPostgresManagerException("Manager not initialized")
+        
+        return await self.index_manager.analyze_index_usage(schema_name)
+    
+    async def collect_postgres_stats(self, schema_name: str = 'public') -> Dict[str, Any]:
+        """Collect PostgreSQL statistics and generate a report.
+        
+        Args:
+            schema_name: Schema to collect stats for
+            
+        Returns:
+            Dictionary with statistics report
+        """
+        if not self._is_initialized:
+            raise GraphPostgresManagerException("Manager not initialized")
+        
+        return await self.stats_collector.generate_report(schema_name)
