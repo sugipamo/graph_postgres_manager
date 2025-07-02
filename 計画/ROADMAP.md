@@ -55,9 +55,9 @@ Neo4jとPostgreSQLの統合管理を行い、グラフデータとリレーシ�
   - [x] バッチ操作API
   - [ ] ast2graphデータ受け取りAPI（store_ast_graph）
   - [ ] 意図-AST関連付けAPI（link_intent_to_ast）
-- [ ] テストの実装
-  - [x] ユニットテスト（一部実装済み）
-  - [ ] 統合テスト
+- [x] テストの実装
+  - [x] ユニットテスト（基本実装完了）
+  - [x] 統合テスト（基本実装完了）
   - [ ] パフォーマンステスト
 
 ## 技術仕様
@@ -94,15 +94,20 @@ Neo4jとPostgreSQLの統合管理を行い、グラフデータとリレーシ�
 - エラーハンドリングの基本実装
   - 例外階層の定義（GraphPostgresManagerException等）
   - リトライデコレータの実装
+- テスト環境とCI/CD（2025-01-02完了）
+  - Docker環境の構築（docker-compose.yml）
+  - 統合テストの基本実装
+  - GitHub Actionsワークフローの設定
+  - Makefileによる開発環境の整備
 
 ### 次のステップ（優先順位順）
-1. テスト環境の構築【現在のフォーカス】
-   - DockerでNeo4jとPostgreSQLのテスト環境構築
-   - docker-compose.ymlの作成
-   - 統合テストの実装
-   - CI/CDパイプラインの設定（GitHub Actions）
+1. テスト環境の構築【完了済み】
+   - [x] DockerでNeo4jとPostgreSQLのテスト環境構築
+   - [x] docker-compose.ymlの作成
+   - [x] 統合テストの実装
+   - [x] CI/CDパイプラインの設定（GitHub Actions）
 
-2. トランザクション管理の実装
+2. トランザクション管理の実装【現在のフォーカス】
    - 2フェーズコミットプロトコルの実装
    - 分散トランザクションの整合性保証
    - ロールバック機能の実装
