@@ -1,0 +1,25 @@
+{
+  "PreToolUse": [
+      
+    {
+      "matcher": "Write|Edit|MultiEdit",
+      "hooks": [
+        {
+          "type": "command",
+          "command": ".venv/bin/src-check"
+        }
+      ]
+    }
+  ],
+  "PostToolUse": [
+    {
+      "matcher": "Write|Edit|MultiEdit",
+      "hooks": [
+        {
+          "type": "command",
+          "command": ".venv/bin/src-check"
+        }
+      ]
+    }
+  ]
+}
