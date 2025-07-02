@@ -125,6 +125,16 @@ Neo4jとPostgreSQLの統合管理を行い、グラフデータとリレーシ�
   - グラフデータのバリデーション
   - バッチインポートの最適化（1,000ノード/バッチ）
   - ノード・エッジの整合性チェック機能
+- intent_store連携機能の実装（2025-07-03完了）
+  - IntentManagerクラスの実装（intent/manager.py）
+  - IntentMapping、IntentVectorモデルの定義
+  - link_intent_to_astメソッドの実装
+  - get_ast_nodes_by_intentメソッドの実装
+  - search_ast_by_intent_vectorメソッドの実装（pgvector対応）
+  - remove_intent_mappingメソッドの実装
+  - intent_ast_map、intent_vectorsテーブルの設計
+  - GraphPostgresManagerへの統合（Public API）
+  - ユニットテスト・統合テストの実装
 
 ### 次のステップ（優先順位順）
 ~~1. テスト環境の構築【完了済み】~~
@@ -156,12 +166,12 @@ Neo4jとPostgreSQLの統合管理を行い、グラフデータとリレーシ�
    ~~- グラフデータのバリデーション【実装済み】~~
    ~~- バッチインポートの最適化（10,000ノード/秒）【実装済み】~~
 
-1. **intent_store連携機能の実装【最優先】**
-   - link_intent_to_astメソッドの実装
-   - 意図-ASTマッピングテーブルの設計（intent_ast_mapテーブル）
-   - PostgreSQLでのマッピングデータ管理
-   - 関連データの整合性保証
-   - pgvectorを使用したベクトル検索の実装（768次元）
+~~6. intent_store連携機能の実装【完了済み - 2025-07-03】~~
+   ~~- link_intent_to_astメソッドの実装【実装済み】~~
+   ~~- 意図-ASTマッピングテーブルの設計（intent_ast_mapテーブル）【実装済み】~~
+   ~~- PostgreSQLでのマッピングデータ管理【実装済み】~~
+   ~~- 関連データの整合性保証【実装済み】~~
+   ~~- pgvectorを使用したベクトル検索の実装（768次元）【実装済み】~~
 
 2. **code_intent_search統合機能の実装**
    - 統合検索APIの実装
@@ -214,11 +224,11 @@ Neo4jとPostgreSQLの統合管理を行い、グラフデータとリレーシ�
    ~~- ノードタイプ: ASTNode（id, node_type, value, lineno, source_id）【実装済み】~~
    ~~- エッジタイプ: CHILD, NEXT, DEPENDS_ON【実装済み】~~
 
-3. **intent_store連携API (link_intent_to_ast)**  
-   - 意図データとASTノードのマッピング
-   - PostgreSQLでの関連テーブル管理（intent_ast_mapテーブル）
-   - 双方向検索の最適化
-   - ベクトル次元: 768次元（pgvector対応）
+~~3. **intent_store連携API (link_intent_to_ast)**【2025-07-03完了】~~  
+   ~~- 意図データとASTノードのマッピング【実装済み】~~
+   ~~- PostgreSQLでの関連テーブル管理（intent_ast_mapテーブル）【実装済み】~~
+   ~~- 双方向検索の最適化【実装済み】~~
+   ~~- ベクトル次元: 768次元（pgvector対応）【実装済み】~~
 
 ### 中優先度
 4. **デッドロック検出・回避機能**
@@ -249,6 +259,7 @@ Neo4jとPostgreSQLの統合管理を行い、グラフデータとリレーシ�
 
 ## 備考
 - ast2graphライブラリからのグラフデータを受け取るstore_ast_graphメソッド実装済み
-- intent_storeライブラリとの連携を考慮した設計（link_intent_to_astメソッドは未実装）
+- intent_storeライブラリとの連携機能実装済み（link_intent_to_astメソッド）
 - code_intent_searchライブラリからの利用を想定したAPIを提供予定
 - 2025-01-03時点でPhase 1（基礎実装）およびast2graph統合機能が完了
+- 2025-07-03時点でintent_store連携機能が完了

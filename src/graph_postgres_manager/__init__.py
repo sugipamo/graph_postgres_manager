@@ -4,6 +4,7 @@ from .config import ConnectionConfig
 from .exceptions import (
     ConfigurationError,
     ConnectionException,
+    DataOperationError,
     GraphPostgresManagerException,
     HealthCheckError,
     Neo4jConnectionError,
@@ -11,7 +12,9 @@ from .exceptions import (
     PostgresConnectionError,
     RetryExhaustedError,
     TimeoutError,
+    ValidationError,
 )
+from .intent import IntentManager, IntentMapping, IntentVector
 from .manager import GraphPostgresManager
 from .models import ConnectionState, HealthStatus
 
@@ -22,13 +25,18 @@ __all__ = [
     "ConnectionConfig",
     "ConnectionException",
     "ConnectionState",
+    "DataOperationError",
     "GraphPostgresManager",
     "GraphPostgresManagerException",
     "HealthCheckError",
     "HealthStatus",
+    "IntentManager",
+    "IntentMapping",
+    "IntentVector",
     "Neo4jConnectionError",
     "PoolExhaustedError",
     "PostgresConnectionError",
     "RetryExhaustedError",
     "TimeoutError",
+    "ValidationError",
 ]
