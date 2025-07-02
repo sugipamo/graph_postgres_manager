@@ -1,0 +1,11 @@
+[project]
+name = "graph-postgres-manager"
+version = "0.1.0"
+description = "Unified management for Neo4j and PostgreSQL database connections and transactions"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
