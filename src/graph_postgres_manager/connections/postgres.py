@@ -8,7 +8,10 @@ from typing import Optional, Any, Dict, List, AsyncIterator
 
 import psycopg
 from psycopg import AsyncConnection
-from psycopg.pool import AsyncConnectionPool
+try:
+    from psycopg.pool import AsyncConnectionPool
+except ImportError:
+    from psycopg_pool import AsyncConnectionPool
 from psycopg.rows import dict_row
 
 from .base import BaseConnection

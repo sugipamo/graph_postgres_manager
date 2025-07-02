@@ -7,8 +7,50 @@ requires-python = ">=3.12"
 dependencies = [
     "neo4j>=5.28.0",
     "psycopg[binary]>=3.1.0",
+    "psycopg-pool>=1.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "mypy>=1.0.0",
+    "ruff>=0.0.250",
 ]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["src/graph_postgres_manager"]
+omit = ["*/tests/*", "*/__init__.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "pass",
+    "except ImportError:",
+]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+select = ["E", "F", "B", "I", "N", "UP", "S", "A", "C4", "T10", "DJ", "EM", "G", "PIE", "PT", "Q", "RET", "SIM", "TID", "ARG", "PGH", "PLC", "PLE", "PLR", "PLW", "RUF"]
+ignore = ["PLR0913", "S101"]
