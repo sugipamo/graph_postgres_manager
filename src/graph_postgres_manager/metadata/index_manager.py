@@ -1,12 +1,9 @@
 """Index management functionality for PostgreSQL."""
 
-import asyncio
-from typing import List, Dict, Any, Optional, Set, Tuple
-from datetime import datetime, timedelta
-import hashlib
+from datetime import datetime
+from typing import Any
 
 from ..connections.postgres import PostgresConnection
-from ..exceptions import MetadataError
 from .models import IndexInfo
 
 
@@ -20,11 +17,11 @@ class IndexManager:
             connection: PostgreSQL connection instance
         """
         self.connection = connection
-        self._index_cache: Dict[str, List[IndexInfo]] = {}
-        self._usage_stats_cache: Dict[str, Dict[str, Any]] = {}
+        self._index_cache: dict[str, list[IndexInfo]] = {}
+        self._usage_stats_cache: dict[str, dict[str, Any]] = {}
         
-    async def get_index_info(self, schema_name: str = 'public', 
-                           table_name: Optional[str] = None) -> List[IndexInfo]:
+    async def get_index_info(self, schema_name: str = "public", 
+                           table_name: str | None = None) -> list[IndexInfo]:
         """Get information about indexes.
         
         Args:
@@ -81,27 +78,27 @@ class IndexManager:
         indexes = []
         for row in result:
             # Check if index is partial
-            is_partial = "WHERE" in row['index_definition']
+            is_partial = "WHERE" in row["index_definition"]
             
             index_info = IndexInfo(
-                schema_name=row['schema_name'],
-                table_name=row['table_name'],
-                index_name=row['index_name'],
-                is_unique=row['is_unique'],
-                is_primary=row['is_primary'],
+                schema_name=row["schema_name"],
+                table_name=row["table_name"],
+                index_name=row["index_name"],
+                is_unique=row["is_unique"],
+                is_primary=row["is_primary"],
                 is_partial=is_partial,
-                index_definition=row['index_definition'],
-                columns=row['columns'],
-                size_bytes=row['size_bytes'],
-                index_scans=row['index_scans']
+                index_definition=row["index_definition"],
+                columns=row["columns"],
+                size_bytes=row["size_bytes"],
+                index_scans=row["index_scans"]
             )
             indexes.append(index_info)
         
         self._index_cache[cache_key] = indexes
         return indexes
     
-    async def analyze_index_usage(self, schema_name: str = 'public', 
-                                days_back: int = 30) -> Dict[str, Any]:
+    async def analyze_index_usage(self, schema_name: str = "public", 
+                                days_back: int = 30) -> dict[str, Any]:
         """Analyze index usage patterns.
         
         Args:
@@ -118,13 +115,13 @@ class IndexManager:
         table_stats = await self._get_table_scan_stats(schema_name)
         
         analysis = {
-            'unused_indexes': [],
-            'rarely_used_indexes': [],
-            'duplicate_indexes': [],
-            'missing_indexes': [],
-            'large_unused_indexes': [],
-            'index_bloat': [],
-            'recommendations': []
+            "unused_indexes": [],
+            "rarely_used_indexes": [],
+            "duplicate_indexes": [],
+            "missing_indexes": [],
+            "large_unused_indexes": [],
+            "index_bloat": [],
+            "recommendations": []
         }
         
         # Analyze each index
@@ -135,51 +132,51 @@ class IndexManager:
                 
             # Check for unused indexes
             if index.index_scans == 0:
-                analysis['unused_indexes'].append({
-                    'index_name': index.index_name,
-                    'table_name': index.table_name,
-                    'size_bytes': index.size_bytes,
-                    'columns': index.columns
+                analysis["unused_indexes"].append({
+                    "index_name": index.index_name,
+                    "table_name": index.table_name,
+                    "size_bytes": index.size_bytes,
+                    "columns": index.columns
                 })
                 
                 # Flag large unused indexes
                 if index.size_bytes and index.size_bytes > 10 * 1024 * 1024:  # 10MB
-                    analysis['large_unused_indexes'].append({
-                        'index_name': index.index_name,
-                        'table_name': index.table_name,
-                        'size_mb': index.size_bytes / (1024 * 1024)
+                    analysis["large_unused_indexes"].append({
+                        "index_name": index.index_name,
+                        "table_name": index.table_name,
+                        "size_mb": index.size_bytes / (1024 * 1024)
                     })
             
             # Check for rarely used indexes
             elif index.index_scans and index.index_scans < 100:
-                analysis['rarely_used_indexes'].append({
-                    'index_name': index.index_name,
-                    'table_name': index.table_name,
-                    'scan_count': index.index_scans,
-                    'size_bytes': index.size_bytes
+                analysis["rarely_used_indexes"].append({
+                    "index_name": index.index_name,
+                    "table_name": index.table_name,
+                    "scan_count": index.index_scans,
+                    "size_bytes": index.size_bytes
                 })
         
         # Find duplicate indexes
         duplicates = await self._find_duplicate_indexes(indexes)
-        analysis['duplicate_indexes'] = duplicates
+        analysis["duplicate_indexes"] = duplicates
         
         # Check for missing indexes based on table scans
         missing = await self._suggest_missing_indexes(schema_name, table_stats)
-        analysis['missing_indexes'] = missing
+        analysis["missing_indexes"] = missing
         
         # Check index bloat
         bloat = await self._check_index_bloat(schema_name)
-        analysis['index_bloat'] = bloat
+        analysis["index_bloat"] = bloat
         
         # Generate recommendations
-        analysis['recommendations'] = self._generate_recommendations(analysis)
+        analysis["recommendations"] = self._generate_recommendations(analysis)
         
         # Cache the analysis
         self._usage_stats_cache[schema_name] = analysis
         
         return analysis
     
-    async def _get_table_scan_stats(self, schema_name: str) -> Dict[str, Any]:
+    async def _get_table_scan_stats(self, schema_name: str) -> dict[str, Any]:
         """Get table scan statistics."""
         query = """
         SELECT 
@@ -208,16 +205,16 @@ class IndexManager:
         
         stats = {}
         for row in result:
-            stats[row['tablename']] = dict(row)
+            stats[row["tablename"]] = dict(row)
             
         return stats
     
-    def _find_duplicate_indexes(self, indexes: List[IndexInfo]) -> List[Dict[str, Any]]:
+    def _find_duplicate_indexes(self, indexes: list[IndexInfo]) -> list[dict[str, Any]]:
         """Find duplicate or redundant indexes."""
         duplicates = []
         
         # Group indexes by table
-        table_indexes: Dict[str, List[IndexInfo]] = {}
+        table_indexes: dict[str, list[IndexInfo]] = {}
         for index in indexes:
             key = f"{index.schema_name}.{index.table_name}"
             if key not in table_indexes:
@@ -231,26 +228,26 @@ class IndexManager:
                     # Check if indexes have same columns
                     if set(idx1.columns) == set(idx2.columns):
                         duplicates.append({
-                            'table': table_key,
-                            'index1': idx1.index_name,
-                            'index2': idx2.index_name,
-                            'columns': idx1.columns,
-                            'type': 'exact_duplicate'
+                            "table": table_key,
+                            "index1": idx1.index_name,
+                            "index2": idx2.index_name,
+                            "columns": idx1.columns,
+                            "type": "exact_duplicate"
                         })
                     # Check if one index is a prefix of another
                     elif (len(idx1.columns) < len(idx2.columns) and 
                           idx1.columns == idx2.columns[:len(idx1.columns)]):
                         duplicates.append({
-                            'table': table_key,
-                            'redundant_index': idx1.index_name,
-                            'covering_index': idx2.index_name,
-                            'type': 'redundant_prefix'
+                            "table": table_key,
+                            "redundant_index": idx1.index_name,
+                            "covering_index": idx2.index_name,
+                            "type": "redundant_prefix"
                         })
                         
         return duplicates
     
     async def _suggest_missing_indexes(self, schema_name: str, 
-                                     table_stats: Dict[str, Any]) -> List[Dict[str, Any]]:
+                                     table_stats: dict[str, Any]) -> list[dict[str, Any]]:
         """Suggest potentially missing indexes based on query patterns."""
         suggestions = []
         
@@ -270,21 +267,21 @@ class IndexManager:
         
         # Check tables with high sequential scan to index scan ratio
         for table_name, stats in table_stats.items():
-            seq_scan = stats.get('seq_scan', 0)
-            idx_scan = stats.get('idx_scan', 0)
+            seq_scan = stats.get("seq_scan", 0)
+            idx_scan = stats.get("idx_scan", 0)
             
             if seq_scan > 1000 and (idx_scan == 0 or seq_scan / idx_scan > 10):
                 suggestions.append({
-                    'table': f"{schema_name}.{table_name}",
-                    'reason': 'high_sequential_scan_ratio',
-                    'seq_scans': seq_scan,
-                    'index_scans': idx_scan,
-                    'recommendation': f"Consider adding indexes to {table_name}"
+                    "table": f"{schema_name}.{table_name}",
+                    "reason": "high_sequential_scan_ratio",
+                    "seq_scans": seq_scan,
+                    "index_scans": idx_scan,
+                    "recommendation": f"Consider adding indexes to {table_name}"
                 })
                 
         return suggestions
     
-    async def _get_slow_queries(self, schema_name: str) -> List[Dict[str, Any]]:
+    async def _get_slow_queries(self, schema_name: str) -> list[dict[str, Any]]:
         """Get slow queries from pg_stat_statements."""
         query = """
         SELECT 
@@ -307,13 +304,13 @@ class IndexManager:
         except Exception:
             return []
     
-    async def _analyze_query_for_indexes(self, query_info: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    async def _analyze_query_for_indexes(self, query_info: dict[str, Any]) -> dict[str, Any] | None:
         """Analyze a query to suggest indexes."""
         # This is a simplified implementation
         # A full implementation would parse the query and analyze the execution plan
         return None
     
-    async def _check_index_bloat(self, schema_name: str) -> List[Dict[str, Any]]:
+    async def _check_index_bloat(self, schema_name: str) -> list[dict[str, Any]]:
         """Check for index bloat."""
         query = """
         WITH btree_index_atts AS (
@@ -361,18 +358,18 @@ class IndexManager:
         
         bloated_indexes = []
         for row in result:
-            if row['bloat_percentage'] and row['bloat_percentage'] > 20:
+            if row["bloat_percentage"] and row["bloat_percentage"] > 20:
                 bloated_indexes.append({
-                    'index_name': row['index_name'],
-                    'table_name': row['tablename'],
-                    'index_size': row['index_size'],
-                    'bloat_percentage': row['bloat_percentage']
+                    "index_name": row["index_name"],
+                    "table_name": row["tablename"],
+                    "index_size": row["index_size"],
+                    "bloat_percentage": row["bloat_percentage"]
                 })
                 
         return bloated_indexes
     
-    async def suggest_indexes(self, schema_name: str = 'public',
-                            analyze_workload: bool = True) -> List[Dict[str, Any]]:
+    async def suggest_indexes(self, schema_name: str = "public",
+                            analyze_workload: bool = True) -> list[dict[str, Any]]:
         """Suggest new indexes based on workload analysis.
         
         Args:
@@ -397,7 +394,7 @@ class IndexManager:
         
         # Check for tables with frequent sequential scans
         for table_name, stats in table_stats.items():
-            if stats['seq_scan'] > 1000:
+            if stats["seq_scan"] > 1000:
                 # Get frequently filtered columns
                 filtered_columns = await self._get_frequently_filtered_columns(
                     schema_name, table_name
@@ -406,27 +403,27 @@ class IndexManager:
                 for column_info in filtered_columns:
                     # Check if index already exists
                     index_exists = any(
-                        column_info['column'] in idx.columns
+                        column_info["column"] in idx.columns
                         for idx in current_indexes
                         if idx.table_name == table_name
                     )
                     
                     if not index_exists:
                         suggestions.append({
-                            'table': f"{schema_name}.{table_name}",
-                            'column': column_info['column'],
-                            'reason': 'frequently_filtered_column',
-                            'filter_count': column_info['filter_count'],
-                            'create_statement': f"CREATE INDEX idx_{table_name}_{column_info['column']} "
+                            "table": f"{schema_name}.{table_name}",
+                            "column": column_info["column"],
+                            "reason": "frequently_filtered_column",
+                            "filter_count": column_info["filter_count"],
+                            "create_statement": f"CREATE INDEX idx_{table_name}_{column_info['column']} "
                                               f"ON {schema_name}.{table_name} ({column_info['column']})"
                         })
         
         # Sort suggestions by potential impact
-        suggestions.sort(key=lambda x: x.get('filter_count', 0), reverse=True)
+        suggestions.sort(key=lambda x: x.get("filter_count", 0), reverse=True)
         
         return suggestions[:10]  # Return top 10 suggestions
     
-    async def _analyze_workload_patterns(self, schema_name: str) -> List[Dict[str, Any]]:
+    async def _analyze_workload_patterns(self, schema_name: str) -> list[dict[str, Any]]:
         """Analyze query workload patterns for index suggestions."""
         suggestions = []
         
@@ -435,43 +432,43 @@ class IndexManager:
         return suggestions
     
     async def _get_frequently_filtered_columns(self, schema_name: str, 
-                                             table_name: str) -> List[Dict[str, Any]]:
+                                             table_name: str) -> list[dict[str, Any]]:
         """Get columns that are frequently used in WHERE clauses."""
         # This is a simplified implementation
         # A full implementation would analyze query patterns
         return []
     
-    def _generate_recommendations(self, analysis: Dict[str, Any]) -> List[str]:
+    def _generate_recommendations(self, analysis: dict[str, Any]) -> list[str]:
         """Generate actionable recommendations based on analysis."""
         recommendations = []
         
         # Recommend dropping unused indexes
-        if analysis['unused_indexes']:
-            total_size = sum(idx['size_bytes'] for idx in analysis['unused_indexes'] 
-                           if idx['size_bytes'])
+        if analysis["unused_indexes"]:
+            total_size = sum(idx["size_bytes"] for idx in analysis["unused_indexes"] 
+                           if idx["size_bytes"])
             recommendations.append(
                 f"Consider dropping {len(analysis['unused_indexes'])} unused indexes "
                 f"to save {total_size / (1024*1024):.1f} MB of storage"
             )
         
         # Recommend removing duplicate indexes
-        if analysis['duplicate_indexes']:
+        if analysis["duplicate_indexes"]:
             recommendations.append(
                 f"Found {len(analysis['duplicate_indexes'])} duplicate or redundant indexes "
                 "that can be consolidated"
             )
         
         # Recommend rebuilding bloated indexes
-        if analysis['index_bloat']:
-            for bloated in analysis['index_bloat']:
-                if bloated['bloat_percentage'] > 50:
+        if analysis["index_bloat"]:
+            for bloated in analysis["index_bloat"]:
+                if bloated["bloat_percentage"] > 50:
                     recommendations.append(
                         f"Index {bloated['index_name']} is {bloated['bloat_percentage']:.1f}% "
                         "bloated and should be rebuilt with REINDEX"
                     )
         
         # Recommend adding missing indexes
-        if analysis['missing_indexes']:
+        if analysis["missing_indexes"]:
             recommendations.append(
                 f"Consider adding indexes on {len(analysis['missing_indexes'])} tables "
                 "with high sequential scan rates"
@@ -480,7 +477,7 @@ class IndexManager:
         return recommendations
     
     async def create_index(self, schema_name: str, table_name: str, 
-                         columns: List[str], index_name: Optional[str] = None,
+                         columns: list[str], index_name: str | None = None,
                          unique: bool = False, concurrent: bool = True) -> str:
         """Create a new index.
         
@@ -497,7 +494,7 @@ class IndexManager:
         """
         if not index_name:
             # Generate index name
-            column_str = '_'.join(columns)
+            column_str = "_".join(columns)
             index_name = f"idx_{table_name}_{column_str}"[:63]  # PostgreSQL identifier limit
         
         # Build CREATE INDEX statement
@@ -524,7 +521,7 @@ class IndexManager:
         return index_name
     
     async def _record_index_creation(self, schema_name: str, table_name: str,
-                                   index_name: str, columns: List[str]) -> None:
+                                   index_name: str, columns: list[str]) -> None:
         """Record index creation in metadata."""
         insert_query = """
         INSERT INTO _graph_postgres_metadata.index_stats

@@ -1,15 +1,14 @@
 """Statistics collection functionality for PostgreSQL."""
 
 import asyncio
-import json
-from typing import List, Dict, Any, Optional, Set, Tuple
-from datetime import datetime, timedelta
 import hashlib
 import re
+from datetime import datetime, timedelta
+from typing import Any
 
 from ..connections.postgres import PostgresConnection
 from ..exceptions import MetadataError
-from .models import TableStats, QueryPattern
+from .models import QueryPattern, TableStats
 
 
 class StatsCollector:
@@ -22,12 +21,12 @@ class StatsCollector:
             connection: PostgreSQL connection instance
         """
         self.connection = connection
-        self._stats_cache: Dict[str, Any] = {}
+        self._stats_cache: dict[str, Any] = {}
         self._collection_interval = timedelta(hours=1)  # Default collection interval
-        self._last_collection_time: Optional[datetime] = None
+        self._last_collection_time: datetime | None = None
         
-    async def collect_table_stats(self, schema_name: str = 'public',
-                                table_name: Optional[str] = None) -> List[TableStats]:
+    async def collect_table_stats(self, schema_name: str = "public",
+                                table_name: str | None = None) -> list[TableStats]:
         """Collect statistics for tables.
         
         Args:
@@ -80,24 +79,24 @@ class StatsCollector:
         stats_list = []
         for row in result:
             # Calculate estimated row count
-            live_tuples = row['live_tuple_count'] or 0
-            dead_tuples = row['dead_tuple_count'] or 0
+            live_tuples = row["live_tuple_count"] or 0
+            dead_tuples = row["dead_tuple_count"] or 0
             row_count = live_tuples + dead_tuples
             
             stats = TableStats(
-                schema_name=row['schema_name'],
-                table_name=row['table_name'],
+                schema_name=row["schema_name"],
+                table_name=row["table_name"],
                 row_count=row_count,
-                total_size=row['total_size'] or 0,
-                table_size=row['table_size'] or 0,
-                indexes_size=row['indexes_size'] or 0,
-                toast_size=row['toast_size'] or 0,
+                total_size=row["total_size"] or 0,
+                table_size=row["table_size"] or 0,
+                indexes_size=row["indexes_size"] or 0,
+                toast_size=row["toast_size"] or 0,
                 dead_tuple_count=dead_tuples,
                 live_tuple_count=live_tuples,
-                last_vacuum=row['last_vacuum'],
-                last_autovacuum=row['last_autovacuum'],
-                last_analyze=row['last_analyze'],
-                last_autoanalyze=row['last_autoanalyze']
+                last_vacuum=row["last_vacuum"],
+                last_autovacuum=row["last_autovacuum"],
+                last_analyze=row["last_analyze"],
+                last_autoanalyze=row["last_autoanalyze"]
             )
             stats_list.append(stats)
             
@@ -128,7 +127,7 @@ class StatsCollector:
         )
     
     async def analyze_query_patterns(self, min_execution_time_ms: float = 10.0,
-                                   limit: int = 100) -> List[QueryPattern]:
+                                   limit: int = 100) -> list[QueryPattern]:
         """Analyze query execution patterns.
         
         Args:
@@ -146,7 +145,7 @@ class StatsCollector:
         """
         result = await self.connection.fetch_one(check_query)
         
-        if not result['exists']:
+        if not result["exists"]:
             raise MetadataError("pg_stat_statements extension is not installed")
         
         # Get query patterns
@@ -178,19 +177,19 @@ class StatsCollector:
         patterns = []
         for row in result:
             # Normalize query to create pattern
-            normalized_query, query_hash = self._normalize_query(row['query'])
+            normalized_query, query_hash = self._normalize_query(row["query"])
             
             # Extract table references
-            tables = self._extract_table_references(row['query'])
+            tables = self._extract_table_references(row["query"])
             
             pattern = QueryPattern(
                 query_hash=query_hash,
                 query_template=normalized_query,
-                execution_count=row['calls'],
-                total_execution_time_ms=int(row['total_time_ms']),
-                avg_execution_time_ms=row['mean_time_ms'],
-                min_execution_time_ms=int(row['min_time_ms']),
-                max_execution_time_ms=int(row['max_time_ms']),
+                execution_count=row["calls"],
+                total_execution_time_ms=int(row["total_time_ms"]),
+                avg_execution_time_ms=row["mean_time_ms"],
+                min_execution_time_ms=int(row["min_time_ms"]),
+                max_execution_time_ms=int(row["max_time_ms"]),
                 last_executed=datetime.now(),  # Approximation
                 tables_referenced=tables
             )
@@ -201,7 +200,7 @@ class StatsCollector:
             
         return patterns
     
-    def _normalize_query(self, query: str) -> Tuple[str, str]:
+    def _normalize_query(self, query: str) -> tuple[str, str]:
         """Normalize a query to create a pattern template.
         
         Args:
@@ -211,24 +210,24 @@ class StatsCollector:
             Tuple of (normalized_query, query_hash)
         """
         # Remove extra whitespace
-        normalized = ' '.join(query.split())
+        normalized = " ".join(query.split())
         
         # Replace literal values with placeholders
         # Numbers
-        normalized = re.sub(r'\b\d+\.?\d*\b', '?', normalized)
+        normalized = re.sub(r"\b\d+\.?\d*\b", "?", normalized)
         # Single quoted strings
-        normalized = re.sub(r"'[^']*'", '?', normalized)
+        normalized = re.sub(r"'[^']*'", "?", normalized)
         # Double quoted identifiers (leave as is)
         
         # Replace IN lists with single placeholder
-        normalized = re.sub(r'IN\s*\([^)]+\)', 'IN (?)', normalized)
+        normalized = re.sub(r"IN\s*\([^)]+\)", "IN (?)", normalized)
         
         # Calculate hash
         query_hash = hashlib.sha256(normalized.encode()).hexdigest()
         
         return normalized, query_hash
     
-    def _extract_table_references(self, query: str) -> List[str]:
+    def _extract_table_references(self, query: str) -> list[str]:
         """Extract table references from a query.
         
         Args:
@@ -241,17 +240,17 @@ class StatsCollector:
         
         # Simple regex patterns for common cases
         # FROM clause
-        from_pattern = r'FROM\s+([^\s,]+)'
+        from_pattern = r"FROM\s+([^\s,]+)"
         matches = re.finditer(from_pattern, query, re.IGNORECASE)
         tables.extend([m.group(1) for m in matches])
         
         # JOIN clauses
-        join_pattern = r'JOIN\s+([^\s,]+)'
+        join_pattern = r"JOIN\s+([^\s,]+)"
         matches = re.finditer(join_pattern, query, re.IGNORECASE)
         tables.extend([m.group(1) for m in matches])
         
         # UPDATE/INSERT/DELETE
-        update_pattern = r'(?:UPDATE|INSERT\s+INTO|DELETE\s+FROM)\s+([^\s,]+)'
+        update_pattern = r"(?:UPDATE|INSERT\s+INTO|DELETE\s+FROM)\s+([^\s,]+)"
         matches = re.finditer(update_pattern, query, re.IGNORECASE)
         tables.extend([m.group(1) for m in matches])
         
@@ -259,11 +258,11 @@ class StatsCollector:
         cleaned_tables = []
         for table in set(tables):
             # Remove schema prefix if present
-            if '.' in table:
-                table = table.split('.')[-1]
+            if "." in table:
+                table = table.split(".")[-1]
             # Remove quotes
             table = table.strip('"')
-            if table and not table.startswith('('):
+            if table and not table.startswith("("):
                 cleaned_tables.append(table)
                 
         return list(set(cleaned_tables))
@@ -296,8 +295,8 @@ class StatsCollector:
             )
         )
     
-    async def generate_report(self, schema_name: str = 'public',
-                            include_queries: bool = True) -> Dict[str, Any]:
+    async def generate_report(self, schema_name: str = "public",
+                            include_queries: bool = True) -> dict[str, Any]:
         """Generate a comprehensive statistics report.
         
         Args:
@@ -308,13 +307,13 @@ class StatsCollector:
             Dictionary containing the complete report
         """
         report = {
-            'generated_at': datetime.now().isoformat(),
-            'schema': schema_name,
-            'summary': {},
-            'tables': {},
-            'indexes': {},
-            'queries': {},
-            'recommendations': []
+            "generated_at": datetime.now().isoformat(),
+            "schema": schema_name,
+            "summary": {},
+            "tables": {},
+            "indexes": {},
+            "queries": {},
+            "recommendations": []
         }
         
         # Collect table statistics
@@ -325,51 +324,51 @@ class StatsCollector:
         total_rows = sum(t.row_count for t in table_stats)
         total_dead_tuples = sum(t.dead_tuple_count for t in table_stats)
         
-        report['summary'] = {
-            'total_tables': len(table_stats),
-            'total_size_bytes': total_size,
-            'total_size_pretty': self._format_bytes(total_size),
-            'total_rows': total_rows,
-            'total_dead_tuples': total_dead_tuples,
-            'dead_tuple_ratio': total_dead_tuples / total_rows if total_rows > 0 else 0
+        report["summary"] = {
+            "total_tables": len(table_stats),
+            "total_size_bytes": total_size,
+            "total_size_pretty": self._format_bytes(total_size),
+            "total_rows": total_rows,
+            "total_dead_tuples": total_dead_tuples,
+            "dead_tuple_ratio": total_dead_tuples / total_rows if total_rows > 0 else 0
         }
         
         # Add table details
         for stats in table_stats:
-            report['tables'][stats.table_name] = {
-                'size': self._format_bytes(stats.total_size),
-                'rows': stats.row_count,
-                'table_size': self._format_bytes(stats.table_size),
-                'indexes_size': self._format_bytes(stats.indexes_size),
-                'dead_tuples': stats.dead_tuple_count,
-                'bloat_ratio': stats.dead_tuple_count / stats.row_count if stats.row_count > 0 else 0,
-                'last_vacuum': stats.last_vacuum.isoformat() if stats.last_vacuum else None,
-                'last_analyze': stats.last_analyze.isoformat() if stats.last_analyze else None
+            report["tables"][stats.table_name] = {
+                "size": self._format_bytes(stats.total_size),
+                "rows": stats.row_count,
+                "table_size": self._format_bytes(stats.table_size),
+                "indexes_size": self._format_bytes(stats.indexes_size),
+                "dead_tuples": stats.dead_tuple_count,
+                "bloat_ratio": stats.dead_tuple_count / stats.row_count if stats.row_count > 0 else 0,
+                "last_vacuum": stats.last_vacuum.isoformat() if stats.last_vacuum else None,
+                "last_analyze": stats.last_analyze.isoformat() if stats.last_analyze else None
             }
         
         # Get index statistics
         index_analysis = await self._get_index_summary(schema_name)
-        report['indexes'] = index_analysis
+        report["indexes"] = index_analysis
         
         # Get query patterns if requested
         if include_queries:
             try:
                 query_patterns = await self.analyze_query_patterns()
-                report['queries'] = {
-                    'total_patterns': len(query_patterns),
-                    'top_by_total_time': self._get_top_queries_by_time(query_patterns),
-                    'top_by_frequency': self._get_top_queries_by_count(query_patterns),
-                    'slowest_queries': self._get_slowest_queries(query_patterns)
+                report["queries"] = {
+                    "total_patterns": len(query_patterns),
+                    "top_by_total_time": self._get_top_queries_by_time(query_patterns),
+                    "top_by_frequency": self._get_top_queries_by_count(query_patterns),
+                    "slowest_queries": self._get_slowest_queries(query_patterns)
                 }
             except MetadataError:
-                report['queries']['error'] = "pg_stat_statements not available"
+                report["queries"]["error"] = "pg_stat_statements not available"
         
         # Generate recommendations
-        report['recommendations'] = self._generate_recommendations(report)
+        report["recommendations"] = self._generate_recommendations(report)
         
         return report
     
-    async def _get_index_summary(self, schema_name: str) -> Dict[str, Any]:
+    async def _get_index_summary(self, schema_name: str) -> dict[str, Any]:
         """Get summary of index statistics."""
         query = """
         SELECT 
@@ -386,72 +385,72 @@ class StatsCollector:
         result = await self.connection.fetch_one(query, (schema_name,))
         
         return {
-            'total_indexes': result['total_indexes'],
-            'unused_indexes': result['unused_indexes'],
-            'total_size': self._format_bytes(result['total_index_size'] or 0),
-            'unique_indexes': result['unique_indexes'],
-            'primary_keys': result['primary_keys']
+            "total_indexes": result["total_indexes"],
+            "unused_indexes": result["unused_indexes"],
+            "total_size": self._format_bytes(result["total_index_size"] or 0),
+            "unique_indexes": result["unique_indexes"],
+            "primary_keys": result["primary_keys"]
         }
     
-    def _get_top_queries_by_time(self, patterns: List[QueryPattern], limit: int = 10) -> List[Dict[str, Any]]:
+    def _get_top_queries_by_time(self, patterns: list[QueryPattern], limit: int = 10) -> list[dict[str, Any]]:
         """Get top queries by total execution time."""
         sorted_patterns = sorted(patterns, key=lambda p: p.total_execution_time_ms, reverse=True)
         
         return [
             {
-                'query_template': p.query_template[:100] + '...' if len(p.query_template) > 100 else p.query_template,
-                'total_time_ms': p.total_execution_time_ms,
-                'avg_time_ms': p.avg_execution_time_ms,
-                'execution_count': p.execution_count,
-                'tables': p.tables_referenced
+                "query_template": p.query_template[:100] + "..." if len(p.query_template) > 100 else p.query_template,
+                "total_time_ms": p.total_execution_time_ms,
+                "avg_time_ms": p.avg_execution_time_ms,
+                "execution_count": p.execution_count,
+                "tables": p.tables_referenced
             }
             for p in sorted_patterns[:limit]
         ]
     
-    def _get_top_queries_by_count(self, patterns: List[QueryPattern], limit: int = 10) -> List[Dict[str, Any]]:
+    def _get_top_queries_by_count(self, patterns: list[QueryPattern], limit: int = 10) -> list[dict[str, Any]]:
         """Get top queries by execution count."""
         sorted_patterns = sorted(patterns, key=lambda p: p.execution_count, reverse=True)
         
         return [
             {
-                'query_template': p.query_template[:100] + '...' if len(p.query_template) > 100 else p.query_template,
-                'execution_count': p.execution_count,
-                'avg_time_ms': p.avg_execution_time_ms,
-                'tables': p.tables_referenced
+                "query_template": p.query_template[:100] + "..." if len(p.query_template) > 100 else p.query_template,
+                "execution_count": p.execution_count,
+                "avg_time_ms": p.avg_execution_time_ms,
+                "tables": p.tables_referenced
             }
             for p in sorted_patterns[:limit]
         ]
     
-    def _get_slowest_queries(self, patterns: List[QueryPattern], limit: int = 10) -> List[Dict[str, Any]]:
+    def _get_slowest_queries(self, patterns: list[QueryPattern], limit: int = 10) -> list[dict[str, Any]]:
         """Get slowest queries by average execution time."""
         sorted_patterns = sorted(patterns, key=lambda p: p.avg_execution_time_ms, reverse=True)
         
         return [
             {
-                'query_template': p.query_template[:100] + '...' if len(p.query_template) > 100 else p.query_template,
-                'avg_time_ms': p.avg_execution_time_ms,
-                'max_time_ms': p.max_execution_time_ms,
-                'execution_count': p.execution_count,
-                'tables': p.tables_referenced
+                "query_template": p.query_template[:100] + "..." if len(p.query_template) > 100 else p.query_template,
+                "avg_time_ms": p.avg_execution_time_ms,
+                "max_time_ms": p.max_execution_time_ms,
+                "execution_count": p.execution_count,
+                "tables": p.tables_referenced
             }
             for p in sorted_patterns[:limit]
         ]
     
-    def _generate_recommendations(self, report: Dict[str, Any]) -> List[str]:
+    def _generate_recommendations(self, report: dict[str, Any]) -> list[str]:
         """Generate recommendations based on the report."""
         recommendations = []
         
         # Check for bloated tables
-        for table_name, table_info in report['tables'].items():
-            if table_info['bloat_ratio'] > 0.2:  # 20% dead tuples
+        for table_name, table_info in report["tables"].items():
+            if table_info["bloat_ratio"] > 0.2:  # 20% dead tuples
                 recommendations.append(
                     f"Table '{table_name}' has {table_info['bloat_ratio']*100:.1f}% dead tuples. "
                     "Consider running VACUUM."
                 )
             
             # Check for tables that haven't been analyzed recently
-            if table_info['last_analyze']:
-                last_analyze = datetime.fromisoformat(table_info['last_analyze'])
+            if table_info["last_analyze"]:
+                last_analyze = datetime.fromisoformat(table_info["last_analyze"])
                 if datetime.now() - last_analyze > timedelta(days=7):
                     recommendations.append(
                         f"Table '{table_name}' hasn't been analyzed in over 7 days. "
@@ -459,16 +458,16 @@ class StatsCollector:
                     )
         
         # Check for unused indexes
-        if report['indexes'].get('unused_indexes', 0) > 0:
+        if report["indexes"].get("unused_indexes", 0) > 0:
             recommendations.append(
                 f"Found {report['indexes']['unused_indexes']} unused indexes. "
                 "Consider dropping them to save storage and improve write performance."
             )
         
         # Check for slow queries
-        if 'queries' in report and 'slowest_queries' in report['queries']:
-            slow_queries = report['queries']['slowest_queries']
-            if slow_queries and slow_queries[0]['avg_time_ms'] > 1000:
+        if "queries" in report and "slowest_queries" in report["queries"]:
+            slow_queries = report["queries"]["slowest_queries"]
+            if slow_queries and slow_queries[0]["avg_time_ms"] > 1000:
                 recommendations.append(
                     "Found queries with average execution time over 1 second. "
                     "Consider optimizing these queries or adding appropriate indexes."
@@ -478,13 +477,13 @@ class StatsCollector:
     
     def _format_bytes(self, bytes_value: int) -> str:
         """Format bytes to human readable string."""
-        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        for unit in ["B", "KB", "MB", "GB", "TB"]:
             if bytes_value < 1024.0:
                 return f"{bytes_value:.2f} {unit}"
             bytes_value /= 1024.0
         return f"{bytes_value:.2f} PB"
     
-    async def start_continuous_collection(self, schema_name: str = 'public',
+    async def start_continuous_collection(self, schema_name: str = "public",
                                         interval_minutes: int = 60) -> None:
         """Start continuous statistics collection.
         
@@ -518,7 +517,7 @@ class StatsCollector:
                 print(f"Error in continuous collection: {e}")
                 await asyncio.sleep(60)  # Wait a minute before retrying
     
-    def get_last_collection_time(self) -> Optional[datetime]:
+    def get_last_collection_time(self) -> datetime | None:
         """Get the last time statistics were collected."""
         return self._last_collection_time
     

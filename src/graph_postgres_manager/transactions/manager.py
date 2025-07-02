@@ -6,12 +6,11 @@ import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from ..connections.neo4j import Neo4jConnection
 from ..connections.postgres import PostgresConnection
 from ..exceptions import GraphPostgresManagerException
-
 
 logger = logging.getLogger(__name__)
 
@@ -31,12 +30,10 @@ class TransactionState(Enum):
 
 class TransactionError(GraphPostgresManagerException):
     """トランザクション関連のエラー"""
-    pass
 
 
 class TransactionRollbackError(TransactionError):
     """ロールバック時のエラー"""
-    pass
 
 
 class TransactionContext:
@@ -47,7 +44,7 @@ class TransactionContext:
         manager: "TransactionManager",
         transaction_id: str,
         is_nested: bool = False,
-        timeout: Optional[float] = None
+        timeout: float | None = None
     ):
         self.manager = manager
         self.transaction_id = transaction_id
@@ -58,7 +55,7 @@ class TransactionContext:
         self._postgres_tx = None
         self._start_time = None
         self._end_time = None
-        self._operations: List[Dict[str, Any]] = []
+        self._operations: list[dict[str, Any]] = []
     
     async def begin(self) -> None:
         """トランザクションを開始"""
@@ -128,7 +125,7 @@ class TransactionContext:
             await self._log_operation("rollback_failed", {"error": str(e)})
             raise
     
-    async def neo4j_execute(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    async def neo4j_execute(self, query: str, parameters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Neo4jでクエリを実行"""
         if self.state != TransactionState.ACTIVE:
             raise TransactionError(f"Cannot execute query in transaction state {self.state}")
@@ -136,7 +133,7 @@ class TransactionContext:
         await self._log_operation("neo4j_execute", {"query": query, "parameters": parameters})
         return await self.manager.neo4j_connection.execute_query(query, parameters, transaction=self._neo4j_tx)
     
-    async def postgres_execute(self, query: str, parameters: Optional[Union[List, Dict]] = None) -> List[Dict[str, Any]]:
+    async def postgres_execute(self, query: str, parameters: list | dict | None = None) -> list[dict[str, Any]]:
         """PostgreSQLでクエリを実行"""
         if self.state != TransactionState.ACTIVE:
             raise TransactionError(f"Cannot execute query in transaction state {self.state}")
@@ -192,7 +189,7 @@ class TransactionContext:
             await self._log_operation("partial_commit", {"errors": commit_errors})
             raise TransactionError(f"Commit phase failed: {', '.join(commit_errors)}")
     
-    async def _log_operation(self, action: str, details: Dict[str, Any]) -> None:
+    async def _log_operation(self, action: str, details: dict[str, Any]) -> None:
         """操作をログに記録"""
         operation = {
             "timestamp": datetime.utcnow().isoformat(),
@@ -221,18 +218,18 @@ class TransactionManager:
         postgres_connection: PostgresConnection,
         enable_two_phase_commit: bool = False,
         enable_logging: bool = False,
-        default_timeout: Optional[float] = None
+        default_timeout: float | None = None
     ):
         self.neo4j_connection = neo4j_connection
         self.postgres_connection = postgres_connection
         self.enable_two_phase_commit = enable_two_phase_commit
         self.enable_logging = enable_logging
         self.default_timeout = default_timeout
-        self._active_transactions: Dict[str, TransactionContext] = {}
-        self._transaction_logs: List[Dict[str, Any]] = []
+        self._active_transactions: dict[str, TransactionContext] = {}
+        self._transaction_logs: list[dict[str, Any]] = []
     
     @asynccontextmanager
-    async def transaction(self, timeout: Optional[float] = None) -> TransactionContext:
+    async def transaction(self, timeout: float | None = None) -> TransactionContext:
         """トランザクションコンテキストマネージャー"""
         transaction_id = str(uuid.uuid4())
         is_nested = len(self._active_transactions) > 0
@@ -254,7 +251,7 @@ class TransactionManager:
                 try:
                     async with asyncio.timeout(ctx.timeout):
                         yield ctx
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     await ctx.rollback()
                     raise
             else:
@@ -264,7 +261,7 @@ class TransactionManager:
             if ctx.state == TransactionState.ACTIVE:
                 await ctx.commit()
                 
-        except Exception as e:
+        except Exception:
             # エラー発生時、まだロールバックされていなければロールバック
             if ctx.state in (TransactionState.ACTIVE, TransactionState.PREPARING, TransactionState.PREPARED):
                 try:
@@ -275,18 +272,18 @@ class TransactionManager:
         finally:
             del self._active_transactions[transaction_id]
     
-    async def get_transaction_logs(self, transaction_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def get_transaction_logs(self, transaction_id: str | None = None) -> list[dict[str, Any]]:
         """トランザクションログを取得"""
         if transaction_id:
             return [log for log in self._transaction_logs if log["transaction_id"] == transaction_id]
         return self._transaction_logs.copy()
     
-    async def _save_transaction_log(self, log_entry: Dict[str, Any]) -> None:
+    async def _save_transaction_log(self, log_entry: dict[str, Any]) -> None:
         """トランザクションログを保存"""
         self._transaction_logs.append(log_entry)
         
         # PostgreSQLにログを永続化する場合
-        if self.enable_logging and hasattr(self.postgres_connection, 'execute'):
+        if self.enable_logging and hasattr(self.postgres_connection, "execute"):
             try:
                 await self.postgres_connection.execute(
                     """

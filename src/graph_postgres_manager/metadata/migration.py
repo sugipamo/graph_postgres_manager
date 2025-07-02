@@ -1,14 +1,13 @@
 """Database migration functionality for PostgreSQL."""
 
-import os
 import asyncio
 import hashlib
-from typing import List, Dict, Any, Optional
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from ..connections.postgres import PostgresConnection
-from ..exceptions import SchemaError, MetadataError
+from ..exceptions import SchemaError
 from .models import Migration, MigrationStatus
 
 
@@ -46,7 +45,7 @@ class MigrationManager:
         """
         await self.connection.execute(init_query)
         
-    async def get_pending_migrations(self) -> List[Dict[str, Any]]:
+    async def get_pending_migrations(self) -> list[dict[str, Any]]:
         """Get list of pending migrations.
         
         Returns:
@@ -63,7 +62,7 @@ class MigrationManager:
         """
         applied_result = await self.connection.fetch_all(applied_query)
         applied_migrations = {
-            (row['migration_name'], row['version']): row['status']
+            (row["migration_name"], row["version"]): row["status"]
             for row in applied_result
         }
         
@@ -74,21 +73,21 @@ class MigrationManager:
             version = self._extract_version(migration_name)
             
             if (migration_name, version) not in applied_migrations:
-                with open(file_path, 'r') as f:
+                with open(file_path) as f:
                     content = f.read()
                     checksum = hashlib.sha256(content.encode()).hexdigest()
                 
                 pending.append({
-                    'file_path': str(file_path),
-                    'migration_name': migration_name,
-                    'version': version,
-                    'checksum': checksum,
-                    'size': file_path.stat().st_size
+                    "file_path": str(file_path),
+                    "migration_name": migration_name,
+                    "version": version,
+                    "checksum": checksum,
+                    "size": file_path.stat().st_size
                 })
                 
-        return sorted(pending, key=lambda x: x['version'])
+        return sorted(pending, key=lambda x: x["version"])
     
-    def _get_migration_files(self) -> List[Path]:
+    def _get_migration_files(self) -> list[Path]:
         """Get all migration files from the migrations directory."""
         if not self.migrations_dir.exists():
             return []
@@ -104,14 +103,14 @@ class MigrationManager:
     def _is_valid_migration_file(self, filename: str) -> bool:
         """Check if a filename follows migration naming convention."""
         # Expected format: XXX_description.sql where XXX is version number
-        parts = filename.split('_', 1)
+        parts = filename.split("_", 1)
         if len(parts) >= 2 and parts[0].isdigit():
             return True
         return False
     
     def _extract_version(self, filename: str) -> str:
         """Extract version from migration filename."""
-        parts = filename.split('_', 1)
+        parts = filename.split("_", 1)
         if parts and parts[0].isdigit():
             return parts[0].zfill(3)  # Pad with zeros for sorting
         return "000"
@@ -142,7 +141,7 @@ class MigrationManager:
                 raise SchemaError(f"Migration {migration_name} already applied")
             
             # Read migration content
-            with open(file_path, 'r') as f:
+            with open(file_path) as f:
                 migration_sql = f.read()
                 
             checksum = hashlib.sha256(migration_sql.encode()).hexdigest()
@@ -163,7 +162,7 @@ class MigrationManager:
                 (migration_name, version, MigrationStatus.RUNNING.value, checksum,
                  MigrationStatus.RUNNING.value, checksum)
             )
-            migration_id = result['id']
+            migration_id = result["id"]
             
             try:
                 # Execute migration
@@ -205,7 +204,7 @@ class MigrationManager:
                 )
                 raise SchemaError(f"Migration {migration_name} failed: {e}")
     
-    async def apply_all_pending(self) -> List[Migration]:
+    async def apply_all_pending(self) -> list[Migration]:
         """Apply all pending migrations in order.
         
         Returns:
@@ -216,7 +215,7 @@ class MigrationManager:
         
         for migration_info in pending:
             try:
-                migration = await self.apply_migration(migration_info['file_path'])
+                migration = await self.apply_migration(migration_info["file_path"])
                 applied.append(migration)
             except SchemaError as e:
                 # Stop on first failure
@@ -232,7 +231,7 @@ class MigrationManager:
             version: Version of the migration
         """
         # Look for rollback file (e.g., 001_initial_schema.down.sql)
-        base_name = migration_name.replace('.sql', '')
+        base_name = migration_name.replace(".sql", "")
         rollback_file = self.migrations_dir / f"{base_name}.down.sql"
         
         if not rollback_file.exists():
@@ -250,7 +249,7 @@ class MigrationManager:
             raise SchemaError(f"Migration {migration_name} not found or not completed")
             
         # Execute rollback
-        with open(rollback_file, 'r') as f:
+        with open(rollback_file) as f:
             rollback_sql = f.read()
             
         try:
@@ -270,7 +269,7 @@ class MigrationManager:
         except Exception as e:
             raise SchemaError(f"Rollback failed for {migration_name}: {e}")
     
-    async def get_migration_history(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+    async def get_migration_history(self, limit: int | None = None) -> list[dict[str, Any]]:
         """Get migration history.
         
         Args:
@@ -300,17 +299,17 @@ class MigrationManager:
         result = await self.connection.fetch_all(query)
         return [dict(row) for row in result]
     
-    async def verify_migrations(self) -> Dict[str, Any]:
+    async def verify_migrations(self) -> dict[str, Any]:
         """Verify integrity of applied migrations.
         
         Returns:
             Dictionary with verification results
         """
         results = {
-            'valid': [],
-            'modified': [],
-            'missing': [],
-            'errors': []
+            "valid": [],
+            "modified": [],
+            "missing": [],
+            "errors": []
         }
         
         # Get all completed migrations
@@ -322,38 +321,38 @@ class MigrationManager:
         completed = await self.connection.fetch_all(completed_query)
         
         for migration in completed:
-            file_path = self.migrations_dir / migration['migration_name']
+            file_path = self.migrations_dir / migration["migration_name"]
             
             if not file_path.exists():
-                results['missing'].append({
-                    'migration_name': migration['migration_name'],
-                    'version': migration['version']
+                results["missing"].append({
+                    "migration_name": migration["migration_name"],
+                    "version": migration["version"]
                 })
                 continue
                 
             # Verify checksum
             try:
-                with open(file_path, 'r') as f:
+                with open(file_path) as f:
                     content = f.read()
                     current_checksum = hashlib.sha256(content.encode()).hexdigest()
                     
-                if current_checksum != migration['checksum']:
-                    results['modified'].append({
-                        'migration_name': migration['migration_name'],
-                        'version': migration['version'],
-                        'expected_checksum': migration['checksum'],
-                        'actual_checksum': current_checksum
+                if current_checksum != migration["checksum"]:
+                    results["modified"].append({
+                        "migration_name": migration["migration_name"],
+                        "version": migration["version"],
+                        "expected_checksum": migration["checksum"],
+                        "actual_checksum": current_checksum
                     })
                 else:
-                    results['valid'].append({
-                        'migration_name': migration['migration_name'],
-                        'version': migration['version']
+                    results["valid"].append({
+                        "migration_name": migration["migration_name"],
+                        "version": migration["version"]
                     })
                     
             except Exception as e:
-                results['errors'].append({
-                    'migration_name': migration['migration_name'],
-                    'error': str(e)
+                results["errors"].append({
+                    "migration_name": migration["migration_name"],
+                    "error": str(e)
                 })
                 
         return results
@@ -399,7 +398,7 @@ class MigrationManager:
 """
         
         # Write template
-        with open(file_path, 'w') as f:
+        with open(file_path, "w") as f:
             f.write(template)
             
         # Create rollback template
@@ -413,7 +412,7 @@ class MigrationManager:
 -- DROP TABLE IF EXISTS example_table;
 """
         
-        with open(rollback_path, 'w') as f:
+        with open(rollback_path, "w") as f:
             f.write(rollback_template)
             
         return str(file_path)

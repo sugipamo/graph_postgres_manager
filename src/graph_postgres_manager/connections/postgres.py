@@ -1,24 +1,24 @@
 """PostgreSQL connection management."""
 
-import asyncio
 import logging
 import time
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Optional, Any, Dict, List, AsyncIterator, Union
+from typing import Any
 
 import psycopg
 from psycopg import AsyncConnection
+
 try:
     from psycopg.pool import AsyncConnectionPool
 except ImportError:
     from psycopg_pool import AsyncConnectionPool
 from psycopg.rows import dict_row
 
-from .base import BaseConnection
 from ..config import ConnectionConfig
-from ..exceptions import PostgresConnectionError, PoolExhaustedError
+from ..exceptions import PoolExhaustedError, PostgresConnectionError
 from ..models.types import ConnectionState
-
+from .base import BaseConnection
 
 logger = logging.getLogger(__name__)
 
@@ -33,13 +33,13 @@ class PostgresConnection(BaseConnection):
             config: Connection configuration
         """
         super().__init__(config)
-        self._pool: Optional[AsyncConnectionPool] = None
+        self._pool: AsyncConnectionPool | None = None
     
     async def connect(self) -> None:
         """Establish connection pool to PostgreSQL."""
         try:
             self._state = ConnectionState.CONNECTING
-            logger.info(f"Creating PostgreSQL connection pool")
+            logger.info("Creating PostgreSQL connection pool")
             
             # Create connection pool
             self._pool = AsyncConnectionPool(
@@ -140,9 +140,9 @@ class PostgresConnection(BaseConnection):
     async def execute_query(
         self,
         query: str,
-        parameters: Optional[Dict[str, Any]] = None,
+        parameters: dict[str, Any] | None = None,
         fetch_all: bool = True
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Execute a SQL query.
         
         Args:
@@ -164,9 +164,8 @@ class PostgresConnection(BaseConnection):
                     if fetch_all:
                         results = await cur.fetchall()
                         return [dict(row) for row in results]
-                    else:
-                        result = await cur.fetchone()
-                        return [dict(result)] if result else []
+                    result = await cur.fetchone()
+                    return [dict(result)] if result else []
                         
         except psycopg.Error as e:
             logger.error(f"PostgreSQL query execution failed: {e}")
@@ -175,7 +174,7 @@ class PostgresConnection(BaseConnection):
     async def execute_many(
         self,
         query: str,
-        data: List[Dict[str, Any]]
+        data: list[dict[str, Any]]
     ) -> int:
         """Execute query for multiple parameter sets.
         
@@ -196,7 +195,7 @@ class PostgresConnection(BaseConnection):
                     if data and isinstance(data[0], dict):
                         # Extract parameter names from query
                         import re
-                        param_names = re.findall(r'%\((\w+)\)s', query)
+                        param_names = re.findall(r"%\((\w+)\)s", query)
                         
                         # Convert dicts to tuples in correct order
                         tuple_data = [
@@ -205,7 +204,7 @@ class PostgresConnection(BaseConnection):
                         ]
                         
                         # Replace named placeholders with positional
-                        query_positional = re.sub(r'%\(\w+\)s', '%s', query)
+                        query_positional = re.sub(r"%\(\w+\)s", "%s", query)
                         
                         await cur.executemany(query_positional, tuple_data)
                     else:
@@ -271,12 +270,12 @@ class PostgresConnection(BaseConnection):
             raise PostgresConnectionError(f"Failed to create table: {e}") from e
     
     @property
-    def pool(self) -> Optional[AsyncConnectionPool]:
+    def pool(self) -> AsyncConnectionPool | None:
         """Get the underlying connection pool."""
         return self._pool
     
     @property
-    def pool_status(self) -> Dict[str, Any]:
+    def pool_status(self) -> dict[str, Any]:
         """Get connection pool status.
         
         Returns:
@@ -297,9 +296,9 @@ class PostgresConnection(BaseConnection):
     async def execute(
         self,
         query: str,
-        parameters: Optional[Union[List, Dict[str, Any]]] = None,
-        transaction: Optional[Any] = None
-    ) -> List[Dict[str, Any]]:
+        parameters: list | dict[str, Any] | None = None,
+        transaction: Any | None = None
+    ) -> list[dict[str, Any]]:
         """Execute a SQL query with optional transaction support.
         
         Args:
@@ -420,7 +419,7 @@ class PostgresConnection(BaseConnection):
         Raises:
             PostgresConnectionError: If commit fails
         """
-        if not transaction or not hasattr(transaction, '_prepared_xid'):
+        if not transaction or not hasattr(transaction, "_prepared_xid"):
             return
             
         try:

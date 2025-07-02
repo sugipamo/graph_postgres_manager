@@ -3,15 +3,14 @@
 import asyncio
 import logging
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Any
 
 from .config import ConnectionConfig
 from .connections import Neo4jConnection, PostgresConnection
-from .exceptions import GraphPostgresManagerException, HealthCheckError
+from .exceptions import GraphPostgresManagerException
+from .metadata import IndexManager, SchemaManager, StatsCollector
 from .models import HealthStatus
 from .transactions import TransactionManager
-from .metadata import SchemaManager, IndexManager, StatsCollector
-
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +18,7 @@ logger = logging.getLogger(__name__)
 class GraphPostgresManager:
     """Unified manager for Neo4j and PostgreSQL connections."""
     
-    def __init__(self, config: Optional[ConnectionConfig] = None):
+    def __init__(self, config: ConnectionConfig | None = None):
         """Initialize GraphPostgresManager.
         
         Args:
@@ -28,12 +27,12 @@ class GraphPostgresManager:
         self.config = config or ConnectionConfig()
         self.neo4j = Neo4jConnection(self.config)
         self.postgres = PostgresConnection(self.config)
-        self._health_check_task: Optional[asyncio.Task] = None
+        self._health_check_task: asyncio.Task | None = None
         self._is_initialized = False
-        self._transaction_manager: Optional[TransactionManager] = None
-        self._schema_manager: Optional[SchemaManager] = None
-        self._index_manager: Optional[IndexManager] = None
-        self._stats_collector: Optional[StatsCollector] = None
+        self._transaction_manager: TransactionManager | None = None
+        self._schema_manager: SchemaManager | None = None
+        self._index_manager: IndexManager | None = None
+        self._stats_collector: StatsCollector | None = None
     
     async def initialize(self) -> None:
         """Initialize all connections."""
@@ -59,8 +58,8 @@ class GraphPostgresManager:
         self._transaction_manager = TransactionManager(
             neo4j_connection=self.neo4j,
             postgres_connection=self.postgres,
-            enable_two_phase_commit=getattr(self.config, 'enable_two_phase_commit', False),
-            enable_logging=getattr(self.config, 'enable_transaction_logging', False)
+            enable_two_phase_commit=getattr(self.config, "enable_two_phase_commit", False),
+            enable_logging=getattr(self.config, "enable_transaction_logging", False)
         )
         
         # Initialize metadata managers
@@ -152,9 +151,9 @@ class GraphPostgresManager:
     async def execute_neo4j_query(
         self,
         query: str,
-        parameters: Optional[Dict[str, Any]] = None,
-        database: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        parameters: dict[str, Any] | None = None,
+        database: str | None = None
+    ) -> list[dict[str, Any]]:
         """Execute Cypher query on Neo4j.
         
         Args:
@@ -173,9 +172,9 @@ class GraphPostgresManager:
     async def execute_postgres_query(
         self,
         query: str,
-        parameters: Optional[Dict[str, Any]] = None,
+        parameters: dict[str, Any] | None = None,
         fetch_all: bool = True
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Execute SQL query on PostgreSQL.
         
         Args:
@@ -194,9 +193,9 @@ class GraphPostgresManager:
     async def batch_insert_neo4j(
         self,
         query: str,
-        data: List[Dict[str, Any]],
+        data: list[dict[str, Any]],
         batch_size: int = 1000,
-        database: Optional[str] = None
+        database: str | None = None
     ) -> int:
         """Batch insert data into Neo4j.
         
@@ -217,7 +216,7 @@ class GraphPostgresManager:
     async def batch_insert_postgres(
         self,
         query: str,
-        data: List[Dict[str, Any]]
+        data: list[dict[str, Any]]
     ) -> int:
         """Batch insert data into PostgreSQL.
         
@@ -242,7 +241,7 @@ class GraphPostgresManager:
         """Async context manager exit."""
         await self.close()
     
-    def get_config_info(self) -> Dict[str, Any]:
+    def get_config_info(self) -> dict[str, Any]:
         """Get configuration information with sensitive data masked.
         
         Returns:
@@ -250,7 +249,7 @@ class GraphPostgresManager:
         """
         return self.config.mask_sensitive_data()
     
-    def get_connection_status(self) -> Dict[str, Any]:
+    def get_connection_status(self) -> dict[str, Any]:
         """Get current connection status.
         
         Returns:
@@ -269,7 +268,7 @@ class GraphPostgresManager:
             },
         }
     
-    def transaction(self, timeout: Optional[float] = None):
+    def transaction(self, timeout: float | None = None):
         """Create a transaction context.
         
         Args:
@@ -335,7 +334,7 @@ class GraphPostgresManager:
             raise GraphPostgresManagerException("Manager not initialized")
         return self._stats_collector
     
-    async def get_postgres_schema_info(self, schema_name: str = 'public') -> Dict[str, Any]:
+    async def get_postgres_schema_info(self, schema_name: str = "public") -> dict[str, Any]:
         """Get PostgreSQL schema information.
         
         Args:
@@ -349,7 +348,7 @@ class GraphPostgresManager:
         
         return await self.schema_manager.get_schema_info(schema_name)
     
-    async def analyze_postgres_indexes(self, schema_name: str = 'public') -> Dict[str, Any]:
+    async def analyze_postgres_indexes(self, schema_name: str = "public") -> dict[str, Any]:
         """Analyze PostgreSQL index usage and provide recommendations.
         
         Args:
@@ -363,7 +362,7 @@ class GraphPostgresManager:
         
         return await self.index_manager.analyze_index_usage(schema_name)
     
-    async def collect_postgres_stats(self, schema_name: str = 'public') -> Dict[str, Any]:
+    async def collect_postgres_stats(self, schema_name: str = "public") -> dict[str, Any]:
         """Collect PostgreSQL statistics and generate a report.
         
         Args:

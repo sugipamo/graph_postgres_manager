@@ -1,10 +1,11 @@
 """Tests for connection configuration."""
 
 import os
-import pytest
 from unittest.mock import patch
 
-from graph_postgres_manager import ConnectionConfig, ConfigurationError
+import pytest
+
+from graph_postgres_manager import ConfigurationError, ConnectionConfig
 
 
 class TestConnectionConfig:

@@ -3,15 +3,15 @@
 import pytest
 
 from graph_postgres_manager import (
-    GraphPostgresManagerException,
-    ConnectionException,
-    Neo4jConnectionError,
-    PostgresConnectionError,
     ConfigurationError,
-    PoolExhaustedError,
+    ConnectionException,
+    GraphPostgresManagerException,
     HealthCheckError,
-    TimeoutError,
+    Neo4jConnectionError,
+    PoolExhaustedError,
+    PostgresConnectionError,
     RetryExhaustedError,
+    TimeoutError,
 )
 
 

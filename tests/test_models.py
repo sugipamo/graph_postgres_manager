@@ -1,7 +1,6 @@
 """Tests for data models."""
 
 from datetime import datetime
-import pytest
 
 from graph_postgres_manager import ConnectionState, HealthStatus
 

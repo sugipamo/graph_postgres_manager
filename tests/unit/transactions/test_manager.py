@@ -1,16 +1,17 @@
 import asyncio
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
-from graph_postgres_manager.transactions.manager import (
-    TransactionManager,
-    TransactionState,
-    TransactionContext,
-    TransactionError,
-    TransactionRollbackError,
-)
+import pytest
+
 from graph_postgres_manager.connections.neo4j import Neo4jConnection
 from graph_postgres_manager.connections.postgres import PostgresConnection
+from graph_postgres_manager.transactions.manager import (
+    TransactionContext,
+    TransactionError,
+    TransactionManager,
+    TransactionRollbackError,
+    TransactionState,
+)
 
 
 class TestTransactionManager:

@@ -3,14 +3,18 @@
 import asyncio
 import hashlib
 import json
-from typing import List, Dict, Any, Optional, Set
 from datetime import datetime
+from typing import Any
 
 from ..connections.postgres import PostgresConnection
-from ..exceptions import SchemaError, MetadataError
+from ..exceptions import MetadataError, SchemaError
 from .models import (
-    TableInfo, ColumnInfo, IndexInfo, SchemaChange,
-    ChangeType, ObjectType, Migration, MigrationStatus
+    ChangeType,
+    Migration,
+    MigrationStatus,
+    ObjectType,
+    SchemaChange,
+    TableInfo,
 )
 
 
@@ -24,14 +28,14 @@ class SchemaManager:
             connection: PostgreSQL connection instance
         """
         self.connection = connection
-        self._schema_cache: Dict[str, TableInfo] = {}
+        self._schema_cache: dict[str, TableInfo] = {}
         self._migration_lock = asyncio.Lock()
     
     async def initialize_metadata_schema(self) -> None:
         """Initialize the metadata schema if it doesn't exist."""
         init_script_path = "scripts/init-metadata.sql"
         try:
-            with open(init_script_path, 'r') as f:
+            with open(init_script_path) as f:
                 init_sql = f.read()
             
             await self.connection.execute(init_sql)
@@ -69,7 +73,7 @@ class SchemaManager:
         """
         await self.connection.execute(create_schema_sql)
     
-    async def get_schema_info(self, schema_name: str = 'public') -> Dict[str, TableInfo]:
+    async def get_schema_info(self, schema_name: str = "public") -> dict[str, TableInfo]:
         """Get complete schema information.
         
         Args:
@@ -123,15 +127,15 @@ class SchemaManager:
             constraints=constraints,
             indexes=indexes,
             foreign_keys=foreign_keys,
-            row_count=stats.get('row_count'),
-            size_bytes=stats.get('total_size'),
-            last_analyzed=stats.get('last_analyzed')
+            row_count=stats.get("row_count"),
+            size_bytes=stats.get("total_size"),
+            last_analyzed=stats.get("last_analyzed")
         )
         
         self._schema_cache[cache_key] = table_info
         return table_info
     
-    async def _get_tables(self, schema_name: str) -> List[str]:
+    async def _get_tables(self, schema_name: str) -> list[str]:
         """Get list of tables in a schema."""
         query = """
         SELECT table_name 
@@ -141,9 +145,9 @@ class SchemaManager:
         ORDER BY table_name
         """
         result = await self.connection.fetch_all(query, (schema_name,))
-        return [row['table_name'] for row in result]
+        return [row["table_name"] for row in result]
     
-    async def _get_table_columns(self, schema_name: str, table_name: str) -> List[Dict[str, Any]]:
+    async def _get_table_columns(self, schema_name: str, table_name: str) -> list[dict[str, Any]]:
         """Get column information for a table."""
         query = """
         SELECT 
@@ -177,7 +181,7 @@ class SchemaManager:
         )
         return [dict(row) for row in result]
     
-    async def _get_table_constraints(self, schema_name: str, table_name: str) -> List[Dict[str, Any]]:
+    async def _get_table_constraints(self, schema_name: str, table_name: str) -> list[dict[str, Any]]:
         """Get constraint information for a table."""
         query = """
         SELECT 
@@ -204,7 +208,7 @@ class SchemaManager:
         result = await self.connection.fetch_all(query, (schema_name, table_name))
         return [dict(row) for row in result]
     
-    async def _get_table_indexes(self, schema_name: str, table_name: str) -> List[Dict[str, Any]]:
+    async def _get_table_indexes(self, schema_name: str, table_name: str) -> list[dict[str, Any]]:
         """Get index information for a table."""
         query = """
         SELECT 
@@ -230,7 +234,7 @@ class SchemaManager:
         result = await self.connection.fetch_all(query, (schema_name, table_name))
         return [dict(row) for row in result]
     
-    async def _get_table_foreign_keys(self, schema_name: str, table_name: str) -> List[Dict[str, Any]]:
+    async def _get_table_foreign_keys(self, schema_name: str, table_name: str) -> list[dict[str, Any]]:
         """Get foreign key information for a table."""
         query = """
         SELECT 
@@ -258,7 +262,7 @@ class SchemaManager:
         result = await self.connection.fetch_all(query, (schema_name, table_name))
         return [dict(row) for row in result]
     
-    async def _get_table_statistics(self, schema_name: str, table_name: str) -> Dict[str, Any]:
+    async def _get_table_statistics(self, schema_name: str, table_name: str) -> dict[str, Any]:
         """Get table statistics."""
         query = """
         SELECT 
@@ -277,7 +281,7 @@ class SchemaManager:
             return dict(result)
         return {}
     
-    async def detect_schema_changes(self, schema_name: str = 'public') -> List[SchemaChange]:
+    async def detect_schema_changes(self, schema_name: str = "public") -> list[SchemaChange]:
         """Detect changes in the database schema.
         
         Args:
@@ -304,7 +308,7 @@ class SchemaManager:
         # This is a simplified version - a full implementation would need more sophisticated comparison
         for table_name, table_info in current_schema.items():
             # Check if table is new
-            if not any(change['object_name'] == table_name for change in last_changes):
+            if not any(change["object_name"] == table_name for change in last_changes):
                 change = SchemaChange(
                     change_type=ChangeType.CREATE,
                     object_type=ObjectType.TABLE,
@@ -313,11 +317,11 @@ class SchemaManager:
                     parent_object=None,
                     old_definition=None,
                     new_definition=json.dumps({
-                        'columns': table_info.columns,
-                        'constraints': table_info.constraints,
-                        'indexes': table_info.indexes
+                        "columns": table_info.columns,
+                        "constraints": table_info.constraints,
+                        "indexes": table_info.indexes
                     }),
-                    change_details={'action': 'table_created'}
+                    change_details={"action": "table_created"}
                 )
                 changes.append(change)
                 await self._record_schema_change(change)
@@ -347,7 +351,7 @@ class SchemaManager:
         )
     
     async def apply_migration(self, migration_file: str, version: str, 
-                            description: Optional[str] = None) -> Migration:
+                            description: str | None = None) -> Migration:
         """Apply a database migration.
         
         Args:
@@ -366,12 +370,12 @@ class SchemaManager:
             """
             existing = await self.connection.fetch_one(check_query, (migration_file, version))
             
-            if existing and existing['status'] == MigrationStatus.COMPLETED.value:
+            if existing and existing["status"] == MigrationStatus.COMPLETED.value:
                 raise SchemaError(f"Migration {migration_file} version {version} already applied")
             
             # Read migration file
             try:
-                with open(migration_file, 'r') as f:
+                with open(migration_file) as f:
                     migration_sql = f.read()
             except FileNotFoundError:
                 raise SchemaError(f"Migration file not found: {migration_file}")
@@ -400,7 +404,7 @@ class SchemaManager:
                 insert_query,
                 (migration_file, version, MigrationStatus.RUNNING.value, checksum)
             )
-            migration_id = result['id']
+            migration_id = result["id"]
             
             try:
                 # Execute migration

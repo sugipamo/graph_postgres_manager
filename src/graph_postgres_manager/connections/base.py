@@ -2,20 +2,21 @@
 
 import asyncio
 import logging
-import time
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Any, Optional, AsyncIterator
+from typing import Any
 
 from ..config import ConnectionConfig
 from ..exceptions import (
     ConnectionException,
     RetryExhaustedError,
+)
+from ..exceptions import (
     TimeoutError as CustomTimeoutError,
 )
 from ..models.types import ConnectionState
-
 
 logger = logging.getLogger(__name__)
 
@@ -31,11 +32,11 @@ class BaseConnection(ABC):
         """
         self.config = config
         self._state = ConnectionState.DISCONNECTED
-        self._connection: Optional[Any] = None
-        self._last_health_check: Optional[datetime] = None
+        self._connection: Any | None = None
+        self._last_health_check: datetime | None = None
         self._retry_count = 0
         self._circuit_breaker_open = False
-        self._circuit_breaker_last_failure: Optional[datetime] = None
+        self._circuit_breaker_last_failure: datetime | None = None
         self._lock = asyncio.Lock()
     
     @property
@@ -51,12 +52,10 @@ class BaseConnection(ABC):
     @abstractmethod
     async def connect(self) -> None:
         """Establish connection to the database."""
-        pass
     
     @abstractmethod
     async def disconnect(self) -> None:
         """Close connection to the database."""
-        pass
     
     @abstractmethod
     async def health_check(self) -> tuple[bool, float]:
@@ -65,7 +64,6 @@ class BaseConnection(ABC):
         Returns:
             Tuple of (is_healthy, latency_ms)
         """
-        pass
     
     async def ensure_connected(self) -> None:
         """Ensure connection is established, reconnecting if necessary."""
@@ -74,15 +72,14 @@ class BaseConnection(ABC):
     
     async def connect_with_retry(self) -> None:
         """Connect with retry logic."""
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
         
         for attempt in range(self.config.max_retry_attempts + 1):
             try:
                 if self._circuit_breaker_open:
                     if not self._should_attempt_reconnect():
                         raise ConnectionException("Circuit breaker is open")
-                    else:
-                        self._circuit_breaker_open = False
+                    self._circuit_breaker_open = False
                 
                 await self.connect()
                 self._retry_count = 0
@@ -146,7 +143,7 @@ class BaseConnection(ABC):
     async def execute_with_timeout(
         self,
         coro,
-        timeout: Optional[int] = None
+        timeout: int | None = None
     ) -> Any:
         """Execute coroutine with timeout.
         
@@ -164,7 +161,7 @@ class BaseConnection(ABC):
         
         try:
             return await asyncio.wait_for(coro, timeout=timeout)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             raise CustomTimeoutError(f"Operation timed out after {timeout} seconds")
     
     @asynccontextmanager

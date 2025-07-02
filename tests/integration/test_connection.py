@@ -2,12 +2,10 @@
 接続管理の統合テスト
 """
 import asyncio
+
 import pytest
-from neo4j.exceptions import ServiceUnavailable
 
 from graph_postgres_manager import GraphPostgresManager
-from graph_postgres_manager.config import ConnectionConfig
-from graph_postgres_manager.exceptions import ConnectionException
 
 
 class TestConnectionManagement:

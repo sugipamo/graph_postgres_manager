@@ -2,7 +2,6 @@
 
 import os
 from dataclasses import dataclass, field
-from typing import Tuple, Optional
 
 from .exceptions import ConfigurationError
 
@@ -13,7 +12,7 @@ class ConnectionConfig:
     
     # Neo4j設定
     neo4j_uri: str = field(default_factory=lambda: os.getenv("NEO4J_URI", "bolt://localhost:7687"))
-    neo4j_auth: Tuple[str, str] = field(
+    neo4j_auth: tuple[str, str] = field(
         default_factory=lambda: (
             os.getenv("NEO4J_USER", "neo4j"),
             os.getenv("NEO4J_PASSWORD", "password")

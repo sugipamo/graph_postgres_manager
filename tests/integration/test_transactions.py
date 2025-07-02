@@ -1,12 +1,11 @@
 """Integration tests for transaction management."""
 
 import asyncio
-import pytest
 from datetime import datetime
 
+import pytest
+
 from graph_postgres_manager import GraphPostgresManager
-from graph_postgres_manager.config import ConnectionConfig
-from graph_postgres_manager.transactions import TransactionError, TransactionRollbackError
 
 
 @pytest.mark.integration

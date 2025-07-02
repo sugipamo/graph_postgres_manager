@@ -2,8 +2,8 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, Dict, List, Any
 from enum import Enum
+from typing import Any
 
 
 class ChangeType(str, Enum):
@@ -40,13 +40,13 @@ class TableInfo:
     """Information about a database table."""
     schema_name: str
     table_name: str
-    columns: List[Dict[str, Any]]
-    constraints: List[Dict[str, Any]]
-    indexes: List[Dict[str, Any]]
-    foreign_keys: List[Dict[str, Any]]
-    row_count: Optional[int] = None
-    size_bytes: Optional[int] = None
-    last_analyzed: Optional[datetime] = None
+    columns: list[dict[str, Any]]
+    constraints: list[dict[str, Any]]
+    indexes: list[dict[str, Any]]
+    foreign_keys: list[dict[str, Any]]
+    row_count: int | None = None
+    size_bytes: int | None = None
+    last_analyzed: datetime | None = None
 
 
 @dataclass
@@ -55,13 +55,13 @@ class ColumnInfo:
     column_name: str
     data_type: str
     is_nullable: bool
-    column_default: Optional[str] = None
-    character_maximum_length: Optional[int] = None
-    numeric_precision: Optional[int] = None
-    numeric_scale: Optional[int] = None
+    column_default: str | None = None
+    character_maximum_length: int | None = None
+    numeric_precision: int | None = None
+    numeric_scale: int | None = None
     is_primary_key: bool = False
     is_foreign_key: bool = False
-    foreign_key_reference: Optional[str] = None
+    foreign_key_reference: str | None = None
 
 
 @dataclass
@@ -74,10 +74,10 @@ class IndexInfo:
     is_primary: bool
     is_partial: bool
     index_definition: str
-    columns: List[str]
-    size_bytes: Optional[int] = None
-    index_scans: Optional[int] = None
-    last_used: Optional[datetime] = None
+    columns: list[str]
+    size_bytes: int | None = None
+    index_scans: int | None = None
+    last_used: datetime | None = None
 
 
 @dataclass
@@ -92,10 +92,10 @@ class TableStats:
     toast_size: int
     dead_tuple_count: int
     live_tuple_count: int
-    last_vacuum: Optional[datetime] = None
-    last_autovacuum: Optional[datetime] = None
-    last_analyze: Optional[datetime] = None
-    last_autoanalyze: Optional[datetime] = None
+    last_vacuum: datetime | None = None
+    last_autovacuum: datetime | None = None
+    last_analyze: datetime | None = None
+    last_autoanalyze: datetime | None = None
     collected_at: datetime = field(default_factory=datetime.now)
 
 
@@ -110,7 +110,7 @@ class QueryPattern:
     min_execution_time_ms: int
     max_execution_time_ms: int
     last_executed: datetime
-    tables_referenced: List[str] = field(default_factory=list)
+    tables_referenced: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -118,12 +118,12 @@ class SchemaChange:
     """Record of a schema change."""
     change_type: ChangeType
     object_type: ObjectType
-    schema_name: Optional[str]
+    schema_name: str | None
     object_name: str
-    parent_object: Optional[str]
-    old_definition: Optional[str]
-    new_definition: Optional[str]
-    change_details: Dict[str, Any]
+    parent_object: str | None
+    old_definition: str | None
+    new_definition: str | None
+    change_details: dict[str, Any]
     detected_at: datetime = field(default_factory=datetime.now)
 
 
@@ -132,10 +132,10 @@ class Migration:
     """Database migration information."""
     migration_name: str
     version: str
-    description: Optional[str] = None
+    description: str | None = None
     status: MigrationStatus = MigrationStatus.PENDING
-    executed_at: Optional[datetime] = None
-    execution_time_ms: Optional[int] = None
-    error_message: Optional[str] = None
-    checksum: Optional[str] = None
-    rolled_back_at: Optional[datetime] = None
+    executed_at: datetime | None = None
+    execution_time_ms: int | None = None
+    error_message: str | None = None
+    checksum: str | None = None
+    rolled_back_at: datetime | None = None

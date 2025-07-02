@@ -3,7 +3,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 
 class ConnectionState(Enum):
@@ -24,8 +23,8 @@ class HealthStatus:
     neo4j_latency_ms: float
     postgres_latency_ms: float
     timestamp: datetime = field(default_factory=datetime.now)
-    neo4j_error: Optional[str] = None
-    postgres_error: Optional[str] = None
+    neo4j_error: str | None = None
+    postgres_error: str | None = None
     
     @property
     def is_healthy(self) -> bool:

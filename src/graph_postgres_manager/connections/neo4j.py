@@ -1,22 +1,20 @@
 """Neo4j connection management."""
 
-import asyncio
 import logging
 import time
-from typing import Optional, Any, Dict, List
+from typing import Any
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
 from neo4j.exceptions import (
+    Neo4jError,
     ServiceUnavailable,
     SessionExpired,
-    Neo4jError,
 )
 
-from .base import BaseConnection
 from ..config import ConnectionConfig
 from ..exceptions import Neo4jConnectionError
 from ..models.types import ConnectionState
-
+from .base import BaseConnection
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +29,7 @@ class Neo4jConnection(BaseConnection):
             config: Connection configuration
         """
         super().__init__(config)
-        self._driver: Optional[AsyncDriver] = None
+        self._driver: AsyncDriver | None = None
     
     async def connect(self) -> None:
         """Establish connection to Neo4j."""
@@ -108,9 +106,9 @@ class Neo4jConnection(BaseConnection):
     async def execute_query(
         self,
         query: str,
-        parameters: Optional[Dict[str, Any]] = None,
-        database: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        parameters: dict[str, Any] | None = None,
+        database: str | None = None
+    ) -> list[dict[str, Any]]:
         """Execute a Cypher query.
         
         Args:
@@ -147,7 +145,7 @@ class Neo4jConnection(BaseConnection):
     async def execute_transaction(
         self,
         transaction_func,
-        database: Optional[str] = None,
+        database: str | None = None,
         **kwargs
     ) -> Any:
         """Execute a transaction function.
@@ -178,9 +176,9 @@ class Neo4jConnection(BaseConnection):
     async def batch_insert(
         self,
         query: str,
-        data: List[Dict[str, Any]],
+        data: list[dict[str, Any]],
         batch_size: int = 1000,
-        database: Optional[str] = None
+        database: str | None = None
     ) -> int:
         """Execute batch insert operation.
         
@@ -225,11 +223,11 @@ class Neo4jConnection(BaseConnection):
             raise Neo4jConnectionError(f"Batch insert failed: {e}") from e
     
     @property
-    def driver(self) -> Optional[AsyncDriver]:
+    def driver(self) -> AsyncDriver | None:
         """Get the underlying Neo4j driver."""
         return self._driver
     
-    async def begin_transaction(self, database: Optional[str] = None) -> Any:
+    async def begin_transaction(self, database: str | None = None) -> Any:
         """Begin a new transaction.
         
         Args:
@@ -302,7 +300,6 @@ class Neo4jConnection(BaseConnection):
             This is a placeholder for compatibility.
         """
         logger.warning("Neo4j doesn't support 2-phase commit protocol")
-        pass
     
     async def commit_prepared(self, transaction: Any) -> None:
         """Commit a prepared transaction.
