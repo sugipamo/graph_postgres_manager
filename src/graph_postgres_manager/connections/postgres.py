@@ -4,7 +4,7 @@ import asyncio
 import logging
 import time
 from contextlib import asynccontextmanager
-from typing import Optional, Any, Dict, List, AsyncIterator
+from typing import Optional, Any, Dict, List, AsyncIterator, Union
 
 import psycopg
 from psycopg import AsyncConnection
@@ -293,3 +293,144 @@ class PostgresConnection(BaseConnection):
             "available": len([c for c in self._pool._pool if c.available]),
             "in_use": len([c for c in self._pool._pool if not c.available]),
         }
+    
+    async def execute(
+        self,
+        query: str,
+        parameters: Optional[Union[List, Dict[str, Any]]] = None,
+        transaction: Optional[Any] = None
+    ) -> List[Dict[str, Any]]:
+        """Execute a SQL query with optional transaction support.
+        
+        Args:
+            query: SQL query string
+            parameters: Query parameters
+            transaction: Optional transaction connection
+            
+        Returns:
+            List of result records as dictionaries
+            
+        Raises:
+            PostgresConnectionError: If query execution fails
+        """
+        if transaction:
+            # Execute within provided transaction
+            try:
+                conn = transaction
+                async with conn.cursor() as cur:
+                    await cur.execute(query, parameters or {})
+                    results = await cur.fetchall()
+                    return [dict(row) for row in results]
+            except psycopg.Error as e:
+                logger.error(f"PostgreSQL query execution failed: {e}")
+                raise PostgresConnectionError(f"Query execution failed: {e}") from e
+        else:
+            # Use regular execute_query
+            return await self.execute_query(query, parameters)
+    
+    async def begin_transaction(self) -> Any:
+        """Begin a new transaction.
+        
+        Returns:
+            Transaction connection object
+            
+        Raises:
+            PostgresConnectionError: If transaction creation fails
+        """
+        await self.ensure_connected()
+        
+        try:
+            conn = await self._pool.getconn()
+            await conn.set_autocommit(False)
+            return conn
+        except Exception as e:
+            logger.error(f"Failed to begin transaction: {e}")
+            raise PostgresConnectionError(f"Failed to begin transaction: {e}") from e
+    
+    async def commit_transaction(self, transaction: Any) -> None:
+        """Commit a transaction.
+        
+        Args:
+            transaction: Transaction connection to commit
+            
+        Raises:
+            PostgresConnectionError: If commit fails
+        """
+        if not transaction:
+            return
+            
+        try:
+            await transaction.commit()
+            await self._pool.putconn(transaction)
+        except Exception as e:
+            logger.error(f"Failed to commit transaction: {e}")
+            raise PostgresConnectionError(f"Failed to commit transaction: {e}") from e
+    
+    async def rollback_transaction(self, transaction: Any) -> None:
+        """Rollback a transaction.
+        
+        Args:
+            transaction: Transaction connection to rollback
+            
+        Raises:
+            PostgresConnectionError: If rollback fails
+        """
+        if not transaction:
+            return
+            
+        try:
+            await transaction.rollback()
+            await self._pool.putconn(transaction)
+        except Exception as e:
+            logger.error(f"Failed to rollback transaction: {e}")
+            raise PostgresConnectionError(f"Failed to rollback transaction: {e}") from e
+    
+    async def prepare_transaction(self, transaction: Any) -> None:
+        """Prepare transaction for 2-phase commit.
+        
+        Args:
+            transaction: Transaction connection
+            
+        Note:
+            PostgreSQL supports 2PC with PREPARE TRANSACTION command
+        """
+        if not transaction:
+            return
+            
+        try:
+            # Generate unique transaction ID
+            import uuid
+            xid = f"gpm_{uuid.uuid4().hex[:16]}"
+            
+            async with transaction.cursor() as cur:
+                await cur.execute(f"PREPARE TRANSACTION '{xid}'")
+            
+            # Store the XID with the transaction for later
+            transaction._prepared_xid = xid
+        except Exception as e:
+            logger.error(f"Failed to prepare transaction: {e}")
+            raise PostgresConnectionError(f"Failed to prepare transaction: {e}") from e
+    
+    async def commit_prepared(self, transaction: Any) -> None:
+        """Commit a prepared transaction.
+        
+        Args:
+            transaction: Transaction connection with prepared XID
+            
+        Raises:
+            PostgresConnectionError: If commit fails
+        """
+        if not transaction or not hasattr(transaction, '_prepared_xid'):
+            return
+            
+        try:
+            xid = transaction._prepared_xid
+            # Need a new connection to commit prepared transaction
+            async with self._pool.connection() as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute(f"COMMIT PREPARED '{xid}'")
+            
+            await self._pool.putconn(transaction)
+        except Exception as e:
+            logger.error(f"Failed to commit prepared transaction: {e}")
+            raise PostgresConnectionError(f"Failed to commit prepared transaction: {e}") from e

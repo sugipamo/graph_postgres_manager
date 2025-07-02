@@ -228,3 +228,90 @@ class Neo4jConnection(BaseConnection):
     def driver(self) -> Optional[AsyncDriver]:
         """Get the underlying Neo4j driver."""
         return self._driver
+    
+    async def begin_transaction(self, database: Optional[str] = None) -> Any:
+        """Begin a new transaction.
+        
+        Args:
+            database: Target database (None for default)
+            
+        Returns:
+            Transaction object
+            
+        Raises:
+            Neo4jConnectionError: If transaction creation fails
+        """
+        await self.ensure_connected()
+        
+        try:
+            session = await self._driver.session(database=database).__aenter__()
+            tx = await session.begin_transaction()
+            return (session, tx)
+        except Exception as e:
+            logger.error(f"Failed to begin transaction: {e}")
+            raise Neo4jConnectionError(f"Failed to begin transaction: {e}") from e
+    
+    async def commit_transaction(self, transaction: Any) -> None:
+        """Commit a transaction.
+        
+        Args:
+            transaction: Transaction object to commit
+            
+        Raises:
+            Neo4jConnectionError: If commit fails
+        """
+        if not transaction:
+            return
+            
+        session, tx = transaction
+        try:
+            await tx.commit()
+            await session.close()
+        except Exception as e:
+            logger.error(f"Failed to commit transaction: {e}")
+            raise Neo4jConnectionError(f"Failed to commit transaction: {e}") from e
+    
+    async def rollback_transaction(self, transaction: Any) -> None:
+        """Rollback a transaction.
+        
+        Args:
+            transaction: Transaction object to rollback
+            
+        Raises:
+            Neo4jConnectionError: If rollback fails
+        """
+        if not transaction:
+            return
+            
+        session, tx = transaction
+        try:
+            await tx.rollback()
+            await session.close()
+        except Exception as e:
+            logger.error(f"Failed to rollback transaction: {e}")
+            raise Neo4jConnectionError(f"Failed to rollback transaction: {e}") from e
+    
+    async def prepare_transaction(self, transaction: Any) -> None:
+        """Prepare transaction for 2-phase commit (Neo4j doesn't support this natively).
+        
+        Args:
+            transaction: Transaction object
+            
+        Note:
+            Neo4j doesn't support 2-phase commit protocol natively.
+            This is a placeholder for compatibility.
+        """
+        logger.warning("Neo4j doesn't support 2-phase commit protocol")
+        pass
+    
+    async def commit_prepared(self, transaction: Any) -> None:
+        """Commit a prepared transaction.
+        
+        Args:
+            transaction: Transaction object
+            
+        Note:
+            Since Neo4j doesn't support 2-phase commit,
+            this just delegates to regular commit.
+        """
+        await self.commit_transaction(transaction)

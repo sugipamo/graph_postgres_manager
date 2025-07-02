@@ -9,6 +9,7 @@ from .config import ConnectionConfig
 from .connections import Neo4jConnection, PostgresConnection
 from .exceptions import GraphPostgresManagerException, HealthCheckError
 from .models import HealthStatus
+from .transactions import TransactionManager
 
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,7 @@ class GraphPostgresManager:
         self.postgres = PostgresConnection(self.config)
         self._health_check_task: Optional[asyncio.Task] = None
         self._is_initialized = False
+        self._transaction_manager: Optional[TransactionManager] = None
     
     async def initialize(self) -> None:
         """Initialize all connections."""
@@ -48,6 +50,14 @@ class GraphPostgresManager:
             self._health_check_task = asyncio.create_task(
                 self._health_check_loop()
             )
+        
+        # Initialize transaction manager
+        self._transaction_manager = TransactionManager(
+            neo4j_connection=self.neo4j,
+            postgres_connection=self.postgres,
+            enable_two_phase_commit=getattr(self.config, 'enable_two_phase_commit', False),
+            enable_logging=getattr(self.config, 'enable_transaction_logging', False)
+        )
         
         self._is_initialized = True
         logger.info("GraphPostgresManager initialized successfully")
@@ -246,3 +256,25 @@ class GraphPostgresManager:
                 "pool_status": self.postgres.pool_status,
             },
         }
+    
+    def transaction(self, timeout: Optional[float] = None):
+        """Create a transaction context.
+        
+        Args:
+            timeout: Optional timeout for the transaction
+            
+        Returns:
+            TransactionContext for managing distributed transactions
+            
+        Example:
+            async with manager.transaction() as tx:
+                await tx.neo4j_execute("CREATE (n:Node {id: $id})", {"id": 1})
+                await tx.postgres_execute("INSERT INTO nodes (id) VALUES ($1)", [1])
+        """
+        if not self._is_initialized:
+            raise GraphPostgresManagerException("Manager not initialized")
+        
+        if not self._transaction_manager:
+            raise GraphPostgresManagerException("Transaction manager not available")
+        
+        return self._transaction_manager.transaction(timeout)
