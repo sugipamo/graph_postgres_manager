@@ -24,15 +24,21 @@ def event_loop() -> Generator:
 
 def get_test_config() -> ConnectionConfig:
     """テスト用の接続設定を取得"""
+    # Build PostgreSQL DSN from environment variables
+    postgres_user = os.getenv("POSTGRES_USER", "testuser")
+    postgres_password = os.getenv("POSTGRES_PASSWORD", "testpassword")
+    postgres_host = os.getenv("POSTGRES_HOST", "localhost")
+    postgres_port = os.getenv("POSTGRES_PORT", "5432")
+    postgres_db = os.getenv("POSTGRES_DB", "testdb")
+    postgres_dsn = f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/{postgres_db}"
+    
     return ConnectionConfig(
         neo4j_uri=os.getenv("NEO4J_URI", "bolt://localhost:7687"),
-        neo4j_user=os.getenv("NEO4J_USER", "neo4j"),
-        neo4j_password=os.getenv("NEO4J_PASSWORD", "testpassword"),
-        postgres_host=os.getenv("POSTGRES_HOST", "localhost"),
-        postgres_port=int(os.getenv("POSTGRES_PORT", "5432")),
-        postgres_database=os.getenv("POSTGRES_DB", "testdb"),
-        postgres_user=os.getenv("POSTGRES_USER", "testuser"),
-        postgres_password=os.getenv("POSTGRES_PASSWORD", "testpassword"),
+        neo4j_auth=(
+            os.getenv("NEO4J_USER", "neo4j"),
+            os.getenv("NEO4J_PASSWORD", "testpassword")
+        ),
+        postgres_dsn=postgres_dsn,
     )
 
 
@@ -52,8 +58,7 @@ async def clean_neo4j(manager: GraphPostgresManager) -> AsyncGenerator[None, Non
     yield
     
     # テスト後のクリーンアップ
-    async with manager.neo4j_connection.get_session() as session:
-        await session.run("MATCH (n) DETACH DELETE n")
+    await manager.neo4j.execute_query("MATCH (n) DETACH DELETE n")
 
 
 @pytest_asyncio.fixture
@@ -62,8 +67,7 @@ async def clean_postgres(manager: GraphPostgresManager) -> AsyncGenerator[None, 
     yield
     
     # テスト後のクリーンアップ
-    async with manager.postgres_connection.get_connection() as conn:
-        await conn.execute("TRUNCATE TABLE graph_data.metadata CASCADE")
+    await manager.postgres.execute_query("TRUNCATE TABLE IF EXISTS graph_data.metadata CASCADE")
 
 
 @pytest_asyncio.fixture
@@ -78,7 +82,7 @@ async def wait_for_neo4j(config: ConnectionConfig, max_retries: int = 30) -> boo
         try:
             driver = AsyncGraphDatabase.driver(
                 config.neo4j_uri,
-                auth=(config.neo4j_user, config.neo4j_password)
+                auth=config.neo4j_auth
             )
             async with driver.session() as session:
                 await session.run("RETURN 1")
@@ -95,13 +99,7 @@ async def wait_for_postgres(config: ConnectionConfig, max_retries: int = 30) -> 
     """PostgreSQLが利用可能になるまで待機"""
     for i in range(max_retries):
         try:
-            conn = await AsyncConnection.connect(
-                host=config.postgres_host,
-                port=config.postgres_port,
-                dbname=config.postgres_database,
-                user=config.postgres_user,
-                password=config.postgres_password,
-            )
+            conn = await AsyncConnection.connect(config.postgres_dsn)
             await conn.execute("SELECT 1")
             await conn.close()
             return True

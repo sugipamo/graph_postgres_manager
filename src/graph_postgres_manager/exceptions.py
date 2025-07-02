@@ -48,3 +48,11 @@ class SchemaError(GraphPostgresManagerException):
 
 class MetadataError(GraphPostgresManagerException):
     """Raised when metadata operations fail."""
+
+
+class ValidationError(GraphPostgresManagerException):
+    """Raised when data validation fails."""
+
+
+class DataOperationError(GraphPostgresManagerException):
+    """Raised when data operations fail."""

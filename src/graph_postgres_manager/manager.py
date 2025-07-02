@@ -2,14 +2,15 @@
 
 import asyncio
 import logging
+import time
 from datetime import datetime
 from typing import Any
 
 from .config import ConnectionConfig
 from .connections import Neo4jConnection, PostgresConnection
-from .exceptions import GraphPostgresManagerException
+from .exceptions import DataOperationError, GraphPostgresManagerException, ValidationError
 from .metadata import IndexManager, SchemaManager, StatsCollector
-from .models import HealthStatus
+from .models import EdgeType, HealthStatus
 from .transactions import TransactionManager
 
 logger = logging.getLogger(__name__)
@@ -33,6 +34,10 @@ class GraphPostgresManager:
         self._schema_manager: SchemaManager | None = None
         self._index_manager: IndexManager | None = None
         self._stats_collector: StatsCollector | None = None
+        
+        # For test compatibility
+        self._neo4j_conn = self.neo4j
+        self._postgres_conn = self.postgres
     
     async def initialize(self) -> None:
         """Initialize all connections."""
@@ -375,3 +380,241 @@ class GraphPostgresManager:
             raise GraphPostgresManagerException("Manager not initialized")
         
         return await self.stats_collector.generate_report(schema_name)
+    
+    # AST Graph Storage
+    
+    async def store_ast_graph(
+        self,
+        graph_data: dict[str, Any],
+        source_id: str,
+        metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """Store AST graph data in Neo4j.
+        
+        Args:
+            graph_data: AST graph data with 'nodes' and 'edges' keys
+            source_id: Source identifier for the AST
+            metadata: Optional metadata to attach to nodes
+            
+        Returns:
+            Dictionary with import statistics
+            
+        Raises:
+            ValidationError: If graph data is invalid
+            DataOperationError: If storage fails
+        """
+        if not self._is_initialized:
+            raise GraphPostgresManagerException("Manager not initialized")
+        
+        start_time = time.time()
+        
+        # Validate graph data
+        self._validate_ast_graph(graph_data)
+        
+        try:
+            # Process nodes in batches
+            nodes = graph_data["nodes"]
+            edges = graph_data["edges"]
+            
+            total_nodes = 0
+            total_edges = 0
+            
+            # Batch size for optimal performance
+            batch_size = 1000
+            
+            # Create nodes in batches
+            for i in range(0, len(nodes), batch_size):
+                batch = nodes[i:i + batch_size]
+                node_data = []
+                
+                for node in batch:
+                    # Ensure source_id is set
+                    node_props = {
+                        "id": node["id"],
+                        "node_type": node["node_type"],
+                        "source_id": source_id
+                    }
+                    
+                    # Add optional fields
+                    if "value" in node and node["value"] is not None:
+                        node_props["value"] = node["value"]
+                    if "lineno" in node and node["lineno"] is not None:
+                        node_props["lineno"] = node["lineno"]
+                    
+                    # Add metadata if provided
+                    if metadata:
+                        node_props.update(metadata)
+                    
+                    node_data.append({"props": node_props})
+                
+                # Use MERGE to handle duplicates gracefully
+                query = """
+                UNWIND $nodes AS node
+                MERGE (n:ASTNode {id: node.props.id, source_id: node.props.source_id})
+                SET n += node.props
+                RETURN COUNT(n) AS created
+                """
+                
+                result = await self._neo4j_conn.execute_query(
+                    query,
+                    {"nodes": node_data}
+                )
+                
+                if result and len(result) > 0:
+                    total_nodes += result[0].get("created", 0)
+            
+            # Create edges in batches
+            for i in range(0, len(edges), batch_size):
+                batch = edges[i:i + batch_size]
+                edge_data = []
+                
+                for edge in batch:
+                    edge_data.append({
+                        "source": edge["source"],
+                        "target": edge["target"],
+                        "type": edge["type"]
+                    })
+                
+                # Create relationships based on type
+                query = """
+                UNWIND $edges AS edge
+                MATCH (s:ASTNode {id: edge.source, source_id: $source_id})
+                MATCH (t:ASTNode {id: edge.target, source_id: $source_id})
+                WITH s, t, edge
+                CALL apoc.create.relationship(s, edge.type, {}, t) YIELD rel
+                RETURN COUNT(rel) AS created
+                """
+                
+                # If APOC is not available, fall back to dynamic Cypher
+                try:
+                    result = await self._neo4j_conn.execute_query(
+                        query,
+                        {"edges": edge_data, "source_id": source_id}
+                    )
+                except Exception:
+                    # Fallback for each edge type
+                    for edge_type in ["CHILD", "NEXT", "DEPENDS_ON"]:
+                        type_edges = [e for e in edge_data if e["type"] == edge_type]
+                        if type_edges:
+                            query = f"""
+                            UNWIND $edges AS edge
+                            MATCH (s:ASTNode {{id: edge.source, source_id: $source_id}})
+                            MATCH (t:ASTNode {{id: edge.target, source_id: $source_id}})
+                            MERGE (s)-[:{edge_type}]->(t)
+                            RETURN COUNT(*) AS created
+                            """
+                            result = await self._neo4j_conn.execute_query(
+                                query,
+                                {"edges": type_edges, "source_id": source_id}
+                            )
+                            if result and len(result) > 0:
+                                total_edges += result[0].get("created", 0)
+                else:
+                    if result and len(result) > 0:
+                        total_edges += result[0].get("created", 0)
+            
+            # Create indexes if they don't exist (skip for now to debug)
+            # await self._ensure_ast_indexes()
+            
+            # Calculate performance metrics
+            elapsed_time = time.time() - start_time
+            nodes_per_second = total_nodes / elapsed_time if elapsed_time > 0 else 0
+            
+            return {
+                "created_nodes": total_nodes,
+                "created_edges": total_edges,
+                "import_time_ms": int(elapsed_time * 1000),
+                "nodes_per_second": int(nodes_per_second)
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to store AST graph: {e}")
+            raise DataOperationError(f"Failed to store AST graph: {e}") from e
+    
+    def _validate_ast_graph(self, graph_data: dict[str, Any]) -> None:
+        """Validate AST graph data structure.
+        
+        Args:
+            graph_data: Graph data to validate
+            
+        Raises:
+            ValidationError: If validation fails
+        """
+        # Check required fields
+        if "nodes" not in graph_data:
+            raise ValidationError("Missing required field 'nodes' in graph data")
+        
+        if "edges" not in graph_data:
+            raise ValidationError("Missing required field 'edges' in graph data")
+        
+        if not isinstance(graph_data["nodes"], list):
+            raise ValidationError("Field 'nodes' must be a list")
+        
+        if not isinstance(graph_data["edges"], list):
+            raise ValidationError("Field 'edges' must be a list")
+        
+        # Validate nodes
+        node_ids = set()
+        for i, node in enumerate(graph_data["nodes"]):
+            if not isinstance(node, dict):
+                raise ValidationError(f"Node at index {i} must be a dictionary")
+            
+            # Check required node fields
+            if "id" not in node:
+                raise ValidationError(f"Node at index {i}: Missing required field 'id'")
+            
+            if "node_type" not in node:
+                raise ValidationError(f"Node at index {i}: Missing required field 'node_type'")
+            
+            # Track node IDs for edge validation
+            node_ids.add(node["id"])
+        
+        # Validate edges
+        valid_edge_types = {e.value for e in EdgeType}
+        for i, edge in enumerate(graph_data["edges"]):
+            if not isinstance(edge, dict):
+                raise ValidationError(f"Edge at index {i} must be a dictionary")
+            
+            # Check required edge fields
+            if "source" not in edge:
+                raise ValidationError(f"Edge at index {i}: Missing required field 'source'")
+            
+            if "target" not in edge:
+                raise ValidationError(f"Edge at index {i}: Missing required field 'target'")
+            
+            if "type" not in edge:
+                raise ValidationError(f"Edge at index {i}: Missing required field 'type'")
+            
+            # Validate edge type
+            if edge["type"] not in valid_edge_types:
+                raise ValidationError(
+                    f"Edge at index {i}: Invalid edge type '{edge['type']}'. "
+                    f"Must be one of: {', '.join(valid_edge_types)}"
+                )
+            
+            # Validate edge references exist
+            if edge["source"] not in node_ids:
+                raise ValidationError(
+                    f"Edge at index {i}: Source node '{edge['source']}' not found in nodes"
+                )
+            
+            if edge["target"] not in node_ids:
+                raise ValidationError(
+                    f"Edge at index {i}: Target node '{edge['target']}' not found in nodes"
+                )
+    
+    async def _ensure_ast_indexes(self) -> None:
+        """Ensure required indexes exist for AST nodes."""
+        # Try to create indexes, ignore errors if they already exist
+        indexes = [
+            "CREATE INDEX astnode_id IF NOT EXISTS FOR (n:ASTNode) ON (n.id)",
+            "CREATE INDEX astnode_source_id IF NOT EXISTS FOR (n:ASTNode) ON (n.source_id)",
+            "CREATE INDEX astnode_node_type IF NOT EXISTS FOR (n:ASTNode) ON (n.node_type)"
+        ]
+        
+        for query in indexes:
+            try:
+                await self._neo4j_conn.execute_query(query)
+            except Exception:
+                # Index might already exist, continue
+                pass
