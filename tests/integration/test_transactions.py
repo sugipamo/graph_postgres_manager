@@ -83,7 +83,7 @@ class TestTransactionIntegration:
         assert postgres_result[0]["node_id"] == node_id
     
     @pytest.mark.asyncio
-    async def test_transaction_rollback_on_error(self, manager):
+    async def test_transaction_rollback_on_error(self, transaction_manager):
         """Test transaction rollback when error occurs."""
         node_id = "test-node-2"
         
@@ -105,20 +105,20 @@ class TestTransactionIntegration:
                 await tx.neo4j_execute("INVALID CYPHER QUERY")
         
         # Verify both operations were rolled back
-        neo4j_result = await manager.execute_neo4j_query(
+        neo4j_result = await transaction_manager.execute_neo4j_query(
             "MATCH (n:TransactionTest {id: $id}) RETURN n",
             {"id": node_id}
         )
         assert len(neo4j_result) == 0
         
-        postgres_result = await manager.execute_postgres_query(
+        postgres_result = await transaction_manager.execute_postgres_query(
             "SELECT * FROM transaction_test WHERE node_id = %(node_id)s",
             {"node_id": node_id}
         )
         assert len(postgres_result) == 0
     
     @pytest.mark.asyncio
-    async def test_manual_rollback(self, manager):
+    async def test_manual_rollback(self, transaction_manager):
         """Test manual transaction rollback."""
         node_id = "test-node-3"
         
@@ -139,13 +139,13 @@ class TestTransactionIntegration:
             await tx.rollback()
         
         # Verify both operations were rolled back
-        neo4j_result = await manager.execute_neo4j_query(
+        neo4j_result = await transaction_manager.execute_neo4j_query(
             "MATCH (n:TransactionTest {id: $id}) RETURN n",
             {"id": node_id}
         )
         assert len(neo4j_result) == 0
         
-        postgres_result = await manager.execute_postgres_query(
+        postgres_result = await transaction_manager.execute_postgres_query(
             "SELECT * FROM transaction_test WHERE node_id = %(node_id)s",
             {"node_id": node_id}
         )
@@ -176,12 +176,12 @@ class TestTransactionIntegration:
         await asyncio.gather(*tasks)
         
         # Verify all transactions completed successfully
-        neo4j_result = await manager.execute_neo4j_query(
+        neo4j_result = await transaction_manager.execute_neo4j_query(
             "MATCH (n:TransactionTest) WHERE n.id STARTS WITH 'test-node-concurrent-' RETURN n"
         )
         assert len(neo4j_result) == 5
         
-        postgres_result = await manager.execute_postgres_query(
+        postgres_result = await transaction_manager.execute_postgres_query(
             "SELECT * FROM transaction_test WHERE node_id LIKE 'test-node-concurrent-%'"
         )
         assert len(postgres_result) == 5
@@ -209,7 +209,7 @@ class TestTransactionIntegration:
                 )
         
         # Verify transaction was rolled back
-        neo4j_result = await manager.execute_neo4j_query(
+        neo4j_result = await transaction_manager.execute_neo4j_query(
             "MATCH (n:TransactionTest {id: $id}) RETURN n",
             {"id": node_id}
         )
@@ -237,13 +237,13 @@ class TestTransactionIntegration:
                 )
         
         # Verify all operations were committed
-        neo4j_result = await manager.execute_neo4j_query(
+        neo4j_result = await transaction_manager.execute_neo4j_query(
             "MATCH (n:TransactionTest) WHERE n.id STARTS WITH $base_id RETURN n",
             {"base_id": base_node_id}
         )
         assert len(neo4j_result) == batch_size
         
-        postgres_result = await manager.execute_postgres_query(
+        postgres_result = await transaction_manager.execute_postgres_query(
             "SELECT * FROM transaction_test WHERE node_id LIKE %(pattern)s",
             {"pattern": f"{base_node_id}-%"}
         )
@@ -273,7 +273,7 @@ class TestTransactionIntegration:
             )
         
         # Verify nodes and relationship were created
-        neo4j_result = await manager.execute_neo4j_query(
+        neo4j_result = await transaction_manager.execute_neo4j_query(
             """
             MATCH (u:User {id: $user_id})-[:AUTHORED]->(p:Post {id: $post_id})
             RETURN u, p
@@ -282,7 +282,7 @@ class TestTransactionIntegration:
         )
         assert len(neo4j_result) == 1
         
-        postgres_result = await manager.execute_postgres_query(
+        postgres_result = await transaction_manager.execute_postgres_query(
             "SELECT COUNT(*) as count FROM transaction_test WHERE node_id IN (%(user_id)s, %(post_id)s)",
             {"user_id": user_id, "post_id": post_id}
         )
