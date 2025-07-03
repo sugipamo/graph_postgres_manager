@@ -4,6 +4,7 @@
 import asyncio
 import os
 from collections.abc import AsyncGenerator, Generator
+from pathlib import Path
 
 import pytest
 import pytest_asyncio
@@ -12,6 +13,22 @@ from psycopg import AsyncConnection
 
 from graph_postgres_manager import GraphPostgresManager
 from graph_postgres_manager.config import ConnectionConfig
+
+
+def load_test_env():
+    """Load .env.test file if it exists"""
+    env_file = Path(__file__).parent.parent.parent / ".env.test"
+    if env_file.exists():
+        with open(env_file) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    os.environ[key] = value
+
+
+# Load test environment variables at module import
+load_test_env()
 
 
 @pytest.fixture(scope="session")
