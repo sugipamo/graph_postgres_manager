@@ -49,8 +49,9 @@ class SearchQuery:
     
     def __post_init__(self):
         """Validate query parameters."""
-        if not self.query and not self.vector:
-            raise ValueError("Either query text or vector must be provided")
+        # Allow empty query if filters are provided for filter-only searches
+        if not self.query and not self.vector and not self.filters.node_types:
+            raise ValueError("Either query text, vector, or node type filters must be provided")
         
         if self.vector and len(self.vector) != 768:
             raise ValueError("Vector must have exactly 768 dimensions")

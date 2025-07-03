@@ -1,6 +1,7 @@
 """Integration tests for search functionality."""
 
 import pytest
+import pytest_asyncio
 
 from graph_postgres_manager import SearchQuery, SearchType
 
@@ -8,7 +9,7 @@ from graph_postgres_manager import SearchQuery, SearchType
 class TestSearchIntegration:
     """Integration tests for unified search functionality."""
     
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def prepared_data(self, manager):
         """Prepare test data in both databases."""
         # Store AST graph

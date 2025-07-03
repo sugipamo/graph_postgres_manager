@@ -90,7 +90,7 @@ class SearchManager:
         try:
             # Build Cypher query based on filters
             cypher = self._build_graph_query(query)
-            params = {"search_query": query.query.lower()}
+            params = {"search_query": query.query.lower() if query.query else ""}
             
             results = await self.neo4j.execute_query(cypher, params)
             
@@ -102,7 +102,7 @@ class SearchManager:
                     content=r.get("value", ""),
                     score=self._calculate_graph_score(r, query),
                     search_type=SearchType.GRAPH,
-                    metadata=r.get("metadata", {}),
+                    metadata={},
                     file_path=r.get("file_path"),
                     line_number=r.get("lineno")
                 )
@@ -140,9 +140,11 @@ class SearchManager:
     
     def _build_graph_query(self, query: SearchQuery) -> str:
         """Build Cypher query for graph search."""
-        conditions = [
-            "toLower(n.value) CONTAINS $search_query OR toLower(n.id) CONTAINS $search_query"
-        ]
+        conditions = []
+        
+        # Add text search condition only if query is not empty
+        if query.query:
+            conditions.append("toLower(n.value) CONTAINS $search_query OR toLower(n.id) CONTAINS $search_query")
         
         if query.filters.node_types:
             types = ", ".join(f"'{t}'" for t in query.filters.node_types)
@@ -152,14 +154,15 @@ class SearchManager:
             sources = ", ".join(f"'{s}'" for s in query.filters.source_ids)
             conditions.append(f"n.source_id IN [{sources}]")
         
-        where_clause = " AND ".join(conditions)
+        # If no conditions, match all nodes
+        where_clause = " AND ".join(conditions) if conditions else "true"
         
         return f"""
         MATCH (n)
         WHERE {where_clause}
         RETURN n.id as id, n.source_id as source_id, n.node_type as node_type,
-               n.value as value, n.lineno as lineno, n.metadata as metadata,
-               n.file_path as file_path
+               n.value as value, n.lineno as lineno,
+               coalesce(n.file_path, '') as file_path
         LIMIT {query.filters.max_results}
         """
     

@@ -64,9 +64,8 @@ class TestASTIntegration:
         }
 
     @pytest.mark.asyncio
-    async def test_store_and_retrieve_ast_graph(self, sample_ast_graph):
+    async def test_store_and_retrieve_ast_graph(self, sample_ast_graph, manager):
         """Test storing and retrieving AST graph in Neo4j."""
-        async with GraphPostgresManager() as manager:
             # Clean up any existing test data
             await manager.neo4j.execute_query(
                 "MATCH (n:ASTNode {source_id: 'integration_test'}) DETACH DELETE n"
