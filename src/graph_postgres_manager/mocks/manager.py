@@ -389,6 +389,222 @@ class MockGraphPostgresManager:
         
         return results[:max_results]
     
+    # Intent Management
+    
+    async def link_intent_to_ast(
+        self,
+        intent_id: str,
+        ast_node_ids: List[str],
+        source_id: str,
+        confidence: float = 1.0,
+        metadata: Optional[Dict[str, Any]] = None,
+        intent_vector: Optional[List[float]] = None
+    ) -> Dict[str, Any]:
+        """Link intent data to AST nodes.
+        
+        Args:
+            intent_id: Intent identifier
+            ast_node_ids: List of AST node IDs to link
+            source_id: Source code identifier
+            confidence: Confidence score (0.0-1.0)
+            metadata: Additional metadata
+            intent_vector: Optional 768-dimensional vector
+            
+        Returns:
+            Linking results
+        """
+        self._record_call("link_intent_to_ast", {
+            "intent_id": intent_id,
+            "ast_node_ids": ast_node_ids,
+            "source_id": source_id,
+            "confidence": confidence
+        })
+        
+        if not self._is_initialized:
+            raise RuntimeError("Manager not initialized")
+        
+        if not 0.0 <= confidence <= 1.0:
+            raise ValueError("confidence must be between 0.0 and 1.0")
+        
+        if intent_vector and len(intent_vector) != 768:
+            raise ValueError(f"Vector must have 768 dimensions, got {len(intent_vector)}")
+        
+        # Store mappings
+        mapping_ids = []
+        for ast_node_id in ast_node_ids:
+            mapping = {
+                "id": str(uuid.uuid4()),
+                "intent_id": intent_id,
+                "ast_node_id": ast_node_id,
+                "source_id": source_id,
+                "confidence": confidence,
+                "metadata": metadata or {},
+                "created_at": datetime.now(),
+                "updated_at": datetime.now()
+            }
+            self._data_store.add_intent_mapping(mapping)
+            mapping_ids.append(mapping["id"])
+        
+        # Store vector if provided
+        if intent_vector:
+            self._data_store.add_intent_vector({
+                "intent_id": intent_id,
+                "vector": intent_vector,
+                "metadata": metadata or {},
+                "created_at": datetime.now()
+            })
+        
+        return {
+            "intent_id": intent_id,
+            "mapped_ast_nodes": len(ast_node_ids),
+            "mapping_ids": mapping_ids,
+            "vector_stored": bool(intent_vector)
+        }
+    
+    async def get_ast_nodes_by_intent(
+        self,
+        intent_id: str,
+        min_confidence: float = 0.0
+    ) -> List[Dict[str, Any]]:
+        """Get AST nodes linked to an intent.
+        
+        Args:
+            intent_id: Intent identifier
+            min_confidence: Minimum confidence threshold
+            
+        Returns:
+            List of AST node information
+        """
+        self._record_call("get_ast_nodes_by_intent", {
+            "intent_id": intent_id,
+            "min_confidence": min_confidence
+        })
+        
+        if not self._is_initialized:
+            raise RuntimeError("Manager not initialized")
+        
+        return self._data_store.get_intent_mappings(
+            intent_id=intent_id,
+            min_confidence=min_confidence
+        )
+    
+    async def get_intents_for_ast(
+        self,
+        ast_node_id: str,
+        min_confidence: float = 0.0
+    ) -> List[Dict[str, Any]]:
+        """Get intents linked to an AST node.
+        
+        Args:
+            ast_node_id: AST node identifier
+            min_confidence: Minimum confidence threshold
+            
+        Returns:
+            List of intent information
+        """
+        self._record_call("get_intents_for_ast", {
+            "ast_node_id": ast_node_id,
+            "min_confidence": min_confidence
+        })
+        
+        if not self._is_initialized:
+            raise RuntimeError("Manager not initialized")
+        
+        return self._data_store.get_intent_mappings(
+            ast_node_id=ast_node_id,
+            min_confidence=min_confidence
+        )
+    
+    async def search_ast_by_intent_vector(
+        self,
+        intent_vector: List[float],
+        limit: int = 10,
+        threshold: float = 0.7
+    ) -> List[Dict[str, Any]]:
+        """Search for AST nodes by intent vector similarity.
+        
+        Args:
+            intent_vector: 768-dimensional search vector
+            limit: Maximum number of results
+            threshold: Similarity threshold
+            
+        Returns:
+            List of matching AST nodes
+        """
+        self._record_call("search_ast_by_intent_vector", {
+            "vector_length": len(intent_vector),
+            "limit": limit,
+            "threshold": threshold
+        })
+        
+        if not self._is_initialized:
+            raise RuntimeError("Manager not initialized")
+        
+        if len(intent_vector) != 768:
+            raise ValueError(f"Vector must have 768 dimensions, got {len(intent_vector)}")
+        
+        return self._data_store.search_by_vector(
+            intent_vector,
+            limit=limit,
+            threshold=threshold
+        )
+    
+    async def update_intent_confidence(
+        self,
+        intent_id: str,
+        ast_node_id: str,
+        new_confidence: float
+    ) -> bool:
+        """Update confidence score for an intent-AST mapping.
+        
+        Args:
+            intent_id: Intent identifier
+            ast_node_id: AST node identifier
+            new_confidence: New confidence score
+            
+        Returns:
+            True if updated successfully
+        """
+        self._record_call("update_intent_confidence", {
+            "intent_id": intent_id,
+            "ast_node_id": ast_node_id,
+            "new_confidence": new_confidence
+        })
+        
+        if not self._is_initialized:
+            raise RuntimeError("Manager not initialized")
+        
+        if not 0.0 <= new_confidence <= 1.0:
+            raise ValueError("confidence must be between 0.0 and 1.0")
+        
+        return self._data_store.update_intent_confidence(
+            intent_id, ast_node_id, new_confidence
+        )
+    
+    async def remove_intent_mapping(
+        self,
+        intent_id: str,
+        ast_node_id: Optional[str] = None
+    ) -> int:
+        """Remove intent-AST mappings.
+        
+        Args:
+            intent_id: Intent identifier
+            ast_node_id: Optional specific AST node
+            
+        Returns:
+            Number of mappings removed
+        """
+        self._record_call("remove_intent_mapping", {
+            "intent_id": intent_id,
+            "ast_node_id": ast_node_id
+        })
+        
+        if not self._is_initialized:
+            raise RuntimeError("Manager not initialized")
+        
+        return self._data_store.remove_intent_mapping(intent_id, ast_node_id)
+    
     async def __aenter__(self):
         """Async context manager entry."""
         await self.initialize()

@@ -39,3 +39,18 @@ EXECUTE FUNCTION update_updated_at_column();
 
 -- Grant permissions (adjust user as needed)
 GRANT ALL PRIVILEGES ON TABLE intent_ast_map TO testuser;
+
+-- Create intent_vectors table (without pgvector)
+-- Note: vector search functionality will be limited without pgvector extension
+CREATE TABLE IF NOT EXISTS intent_vectors (
+    intent_id VARCHAR(255) PRIMARY KEY,
+    vector FLOAT8[] NOT NULL CHECK (array_length(vector, 1) = 768),
+    metadata JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create index for intent_vectors
+CREATE INDEX IF NOT EXISTS idx_intent_vectors_intent_id ON intent_vectors(intent_id);
+
+-- Grant permissions
+GRANT ALL PRIVILEGES ON TABLE intent_vectors TO testuser;

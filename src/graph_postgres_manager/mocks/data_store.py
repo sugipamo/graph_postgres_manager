@@ -31,6 +31,10 @@ class InMemoryDataStore:
         self.text_search: Dict[str, Set[str]] = defaultdict(set)
         self.vector_data: Dict[str, List[float]] = {}
         
+        # Intent management
+        self.intent_mappings: List[Dict[str, Any]] = []
+        self.intent_vectors: Dict[str, Dict[str, Any]] = {}
+        
         # Transaction management
         self.transaction_log: List[Dict[str, Any]] = []
         self.active_transactions: Dict[str, Dict[str, Any]] = {}
@@ -339,3 +343,139 @@ class InMemoryDataStore:
             return result
         
         return set()
+    
+    # Intent management methods
+    
+    def add_intent_mapping(self, mapping: Dict[str, Any]) -> None:
+        """Add an intent-AST mapping."""
+        self.intent_mappings.append(mapping)
+    
+    def add_intent_vector(self, vector_data: Dict[str, Any]) -> None:
+        """Add an intent vector."""
+        self.intent_vectors[vector_data["intent_id"]] = vector_data
+    
+    def get_intent_mappings(
+        self,
+        intent_id: Optional[str] = None,
+        ast_node_id: Optional[str] = None,
+        min_confidence: float = 0.0
+    ) -> List[Dict[str, Any]]:
+        """Get intent mappings filtered by criteria."""
+        results = []
+        
+        for mapping in self.intent_mappings:
+            # Apply filters
+            if intent_id and mapping["intent_id"] != intent_id:
+                continue
+            if ast_node_id and mapping["ast_node_id"] != ast_node_id:
+                continue
+            if mapping["confidence"] < min_confidence:
+                continue
+            
+            # Format result
+            if intent_id:
+                # Return AST node info
+                results.append({
+                    "ast_node_id": mapping["ast_node_id"],
+                    "source_id": mapping["source_id"],
+                    "confidence": mapping["confidence"],
+                    "metadata": mapping["metadata"],
+                    "created_at": mapping["created_at"].isoformat() if mapping.get("created_at") else None,
+                    "updated_at": mapping["updated_at"].isoformat() if mapping.get("updated_at") else None
+                })
+            else:
+                # Return intent info
+                results.append({
+                    "intent_id": mapping["intent_id"],
+                    "source_id": mapping["source_id"],
+                    "confidence": mapping["confidence"],
+                    "metadata": mapping["metadata"],
+                    "created_at": mapping["created_at"].isoformat() if mapping.get("created_at") else None,
+                    "updated_at": mapping["updated_at"].isoformat() if mapping.get("updated_at") else None
+                })
+        
+        return results
+    
+    def search_by_vector(
+        self,
+        query_vector: List[float],
+        limit: int = 10,
+        threshold: float = 0.7
+    ) -> List[Dict[str, Any]]:
+        """Search for similar vectors using cosine similarity."""
+        results = []
+        
+        # Simple cosine similarity calculation
+        def cosine_similarity(v1: List[float], v2: List[float]) -> float:
+            dot_product = sum(a * b for a, b in zip(v1, v2))
+            norm1 = sum(a * a for a in v1) ** 0.5
+            norm2 = sum(b * b for b in v2) ** 0.5
+            return dot_product / (norm1 * norm2) if norm1 * norm2 > 0 else 0
+        
+        # Search through stored vectors
+        for intent_id, vector_data in self.intent_vectors.items():
+            similarity = cosine_similarity(query_vector, vector_data["vector"])
+            
+            if similarity >= threshold:
+                # Find mappings for this intent
+                for mapping in self.intent_mappings:
+                    if mapping["intent_id"] == intent_id:
+                        results.append({
+                            "ast_node_id": mapping["ast_node_id"],
+                            "source_id": mapping["source_id"],
+                            "confidence": mapping["confidence"],
+                            "metadata": mapping["metadata"],
+                            "similarity": similarity
+                        })
+        
+        # Sort by similarity and limit
+        results.sort(key=lambda x: x["similarity"], reverse=True)
+        return results[:limit]
+    
+    def update_intent_confidence(
+        self,
+        intent_id: str,
+        ast_node_id: str,
+        new_confidence: float
+    ) -> bool:
+        """Update confidence score for a specific mapping."""
+        from datetime import datetime
+        
+        for mapping in self.intent_mappings:
+            if mapping["intent_id"] == intent_id and mapping["ast_node_id"] == ast_node_id:
+                mapping["confidence"] = new_confidence
+                mapping["updated_at"] = datetime.now()
+                return True
+        return False
+    
+    def remove_intent_mapping(
+        self,
+        intent_id: str,
+        ast_node_id: Optional[str] = None
+    ) -> int:
+        """Remove intent mappings."""
+        removed = 0
+        
+        # Filter out matching mappings
+        if ast_node_id:
+            # Remove specific mapping
+            original_count = len(self.intent_mappings)
+            self.intent_mappings = [
+                m for m in self.intent_mappings
+                if not (m["intent_id"] == intent_id and m["ast_node_id"] == ast_node_id)
+            ]
+            removed = original_count - len(self.intent_mappings)
+        else:
+            # Remove all mappings for intent
+            original_count = len(self.intent_mappings)
+            self.intent_mappings = [
+                m for m in self.intent_mappings
+                if m["intent_id"] != intent_id
+            ]
+            removed = original_count - len(self.intent_mappings)
+            
+            # Also remove vector if exists
+            if intent_id in self.intent_vectors:
+                del self.intent_vectors[intent_id]
+        
+        return removed

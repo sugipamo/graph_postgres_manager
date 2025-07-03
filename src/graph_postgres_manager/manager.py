@@ -14,6 +14,7 @@ from graph_postgres_manager.exceptions import (
     GraphPostgresManagerException,
     ValidationError,
 )
+from graph_postgres_manager.intent import IntentManager
 from graph_postgres_manager.metadata import IndexManager, SchemaManager, StatsCollector
 from graph_postgres_manager.models import EdgeType, HealthStatus
 from graph_postgres_manager.search import (
@@ -47,6 +48,7 @@ class GraphPostgresManager:
         self._index_manager: IndexManager | None = None
         self._stats_collector: StatsCollector | None = None
         self._search_manager: SearchManager | None = None
+        self._intent_manager: IntentManager | None = None
         
         # For test compatibility
         self._neo4j_conn = self.neo4j
@@ -100,6 +102,9 @@ class GraphPostgresManager:
             neo4j_connection=self.neo4j,
             postgres_connection=self.postgres
         )
+        
+        # Initialize intent manager
+        self._intent_manager = IntentManager(self.postgres)
         
         # Initialize metadata schema
         await self._schema_manager.initialize_metadata_schema()
@@ -381,6 +386,20 @@ class GraphPostgresManager:
         if not self._is_initialized or not self._search_manager:
             raise GraphPostgresManagerException("Manager not initialized")
         return self._search_manager
+    
+    @property
+    def intent_manager(self) -> IntentManager:
+        """Get the intent manager instance.
+        
+        Returns:
+            IntentManager instance
+            
+        Raises:
+            GraphPostgresManagerException: If manager not initialized
+        """
+        if not self._is_initialized or not self._intent_manager:
+            raise GraphPostgresManagerException("Manager not initialized")
+        return self._intent_manager
     
     async def get_postgres_schema_info(self, schema_name: str = "public") -> dict[str, Any]:
         """Get PostgreSQL schema information.
@@ -728,3 +747,163 @@ class GraphPostgresManager:
         
         # Execute search
         return await self.search_manager.search(query_obj)
+    
+    # Intent Management
+    
+    async def link_intent_to_ast(
+        self,
+        intent_id: str,
+        ast_node_ids: list[str],
+        source_id: str,
+        confidence: float = 1.0,
+        metadata: dict[str, Any] | None = None,
+        intent_vector: list[float] | None = None
+    ) -> dict[str, Any]:
+        """Link intent data to AST nodes.
+        
+        This method creates mappings between intent data (managed by intent_store)
+        and AST nodes (stored in Neo4j). It supports vector storage for similarity search.
+        
+        Args:
+            intent_id: Intent identifier from intent_store
+            ast_node_ids: List of AST node IDs to link
+            source_id: Source code identifier
+            confidence: Confidence score (0.0-1.0)
+            metadata: Additional metadata
+            intent_vector: Optional 768-dimensional vector representation
+            
+        Returns:
+            Dictionary with linking results:
+            - intent_id: The intent ID
+            - mapped_ast_nodes: Number of nodes linked
+            - mapping_ids: List of created mapping IDs
+            - vector_stored: Whether vector was stored
+            
+        Raises:
+            GraphPostgresManagerException: If manager not initialized
+            ValidationError: If parameters are invalid
+            DataOperationError: If the operation fails
+        """
+        if not self._is_initialized:
+            raise GraphPostgresManagerException("Manager not initialized")
+        
+        return await self.intent_manager.link_intent_to_ast(
+            intent_id=intent_id,
+            ast_node_ids=ast_node_ids,
+            source_id=source_id,
+            confidence=confidence,
+            metadata=metadata,
+            intent_vector=intent_vector
+        )
+    
+    async def get_ast_nodes_by_intent(
+        self,
+        intent_id: str,
+        min_confidence: float = 0.0
+    ) -> list[dict[str, Any]]:
+        """Get AST nodes linked to an intent.
+        
+        Args:
+            intent_id: Intent identifier
+            min_confidence: Minimum confidence threshold
+            
+        Returns:
+            List of AST node information with confidence scores
+        """
+        if not self._is_initialized:
+            raise GraphPostgresManagerException("Manager not initialized")
+        
+        return await self.intent_manager.get_ast_nodes_by_intent(intent_id, min_confidence)
+    
+    async def get_intents_for_ast(
+        self,
+        ast_node_id: str,
+        min_confidence: float = 0.0
+    ) -> list[dict[str, Any]]:
+        """Get intents linked to an AST node.
+        
+        Args:
+            ast_node_id: AST node identifier
+            min_confidence: Minimum confidence threshold
+            
+        Returns:
+            List of intent information with confidence scores
+        """
+        if not self._is_initialized:
+            raise GraphPostgresManagerException("Manager not initialized")
+        
+        return await self.intent_manager.get_intents_for_ast(ast_node_id, min_confidence)
+    
+    async def search_ast_by_intent_vector(
+        self,
+        intent_vector: list[float],
+        limit: int = 10,
+        threshold: float = 0.7
+    ) -> list[dict[str, Any]]:
+        """Search for AST nodes by intent vector similarity.
+        
+        Uses pgvector to find AST nodes linked to similar intents.
+        
+        Args:
+            intent_vector: 768-dimensional search vector
+            limit: Maximum number of results
+            threshold: Similarity threshold (0.0-1.0)
+            
+        Returns:
+            List of matching AST nodes with similarity scores
+        """
+        if not self._is_initialized:
+            raise GraphPostgresManagerException("Manager not initialized")
+        
+        return await self.intent_manager.search_ast_by_intent_vector(
+            intent_vector=intent_vector,
+            limit=limit,
+            threshold=threshold
+        )
+    
+    async def update_intent_confidence(
+        self,
+        intent_id: str,
+        ast_node_id: str,
+        new_confidence: float
+    ) -> bool:
+        """Update the confidence score for an intent-AST mapping.
+        
+        Args:
+            intent_id: Intent identifier
+            ast_node_id: AST node identifier
+            new_confidence: New confidence score (0.0-1.0)
+            
+        Returns:
+            True if updated successfully
+        """
+        if not self._is_initialized:
+            raise GraphPostgresManagerException("Manager not initialized")
+        
+        return await self.intent_manager.update_intent_confidence(
+            intent_id=intent_id,
+            ast_node_id=ast_node_id,
+            new_confidence=new_confidence
+        )
+    
+    async def remove_intent_mapping(
+        self,
+        intent_id: str,
+        ast_node_id: str | None = None
+    ) -> int:
+        """Remove intent-AST mappings.
+        
+        Args:
+            intent_id: Intent identifier
+            ast_node_id: Optional specific AST node to unlink
+            
+        Returns:
+            Number of mappings removed
+        """
+        if not self._is_initialized:
+            raise GraphPostgresManagerException("Manager not initialized")
+        
+        return await self.intent_manager.remove_intent_mapping(
+            intent_id=intent_id,
+            ast_node_id=ast_node_id
+        )

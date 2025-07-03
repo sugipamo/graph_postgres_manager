@@ -140,18 +140,29 @@ Neo4jとPostgreSQLの統合管理を行い、グラフデータとリレーシ�
   - バッチインポートの最適化（1,000ノード/バッチ）
   - ノード・エッジの整合性チェック機能
   - APOC非対応環境でのフォールバック処理
-- intent_store連携機能の実装（2025-07-03完了）
-  - IntentManagerクラスの実装（intent/manager.py）
-  - IntentMapping、IntentVectorモデルの定義
-  - link_intent_to_astメソッドの実装
-  - get_ast_nodes_by_intentメソッドの実装
-  - search_ast_by_intent_vectorメソッドの実装（pgvector対応）
-  - remove_intent_mappingメソッドの実装
-  - intent_ast_map、intent_vectorsテーブルの設計
-  - GraphPostgresManagerへの統合（Public API）
-  - ユニットテスト・統合テストの実装
+- intent_store連携機能の実装（2025-07-04完了）
+  - IntentManagerクラスの実装（intent/manager.py）✅
+  - IntentMapping、IntentVectorモデルの定義 ✅
+  - link_intent_to_astメソッドの実装 ✅
+  - get_ast_nodes_by_intentメソッドの実装 ✅
+  - search_ast_by_intent_vectorメソッドの実装（pgvectorなしで実装）✅
+  - remove_intent_mappingメソッドの実装 ✅
+  - intent_ast_map、intent_vectorsテーブルの設計 ✅
+  - GraphPostgresManagerへの統合（Public API）✅
+  - ユニットテスト・統合テストの実装 ✅
 
 ### 完了した機能（2025-07-04更新）
+- **intent_store連携機能の実装（2025-07-04）**【✅ 完了】
+   - IntentManagerクラスの完全実装 ✅
+   - link_intent_to_astメソッド（意図とASTノードの関連付け）✅
+   - get_ast_nodes_by_intent/get_intents_for_ast（双方向検索）✅
+   - search_ast_by_intent_vector（ベクトル類似度検索）✅
+   - update_intent_confidence（信頼度更新）✅
+   - remove_intent_mapping（マッピング削除）✅
+   - batch_link_intents（バッチ処理対応）✅
+   - pgvectorなしでのベクトル検索実装 ✅
+   - MockGraphPostgresManagerへのintent機能統合 ✅
+   - 包括的なユニット・統合テスト実装 ✅
 - **モック実装の開発（2025-07-04）**【✅ 完了】
    - MockGraphPostgresManagerクラスの完全実装 ✅
    - InMemoryDataStore（ゼロ依存、高速動作）✅
@@ -177,48 +188,41 @@ Neo4jとPostgreSQLの統合管理を行い、グラフデータとリレーシ�
 
 ### 次のステップ（優先順位順）【2025-07-04更新】
 
-1. **モック実装の開発**【✅ 完了 2025-07-04】
-   - MockGraphPostgresManagerクラスの実装 ✅
-   - インメモリデータストアの構築（依存関係ゼロ）✅
-   - トランザクション管理のモック化 ✅
-   - 他プロジェクトでの利用を容易にする設計 ✅
-   - 完了詳細: 計画/結果/202507032300_計画_モック実装計画_✓.md
-
-2. **Docker環境の認証設定修正**【優先度高】
+1. **Docker環境の認証設定修正**【優先度: 高】
    - 統合テストの認証エラー解決（33件のテストが失敗）
    - Neo4j/PostgreSQLの認証情報統一
    - 環境変数とdocker-compose.ymlの整合性確保
    - テスト環境設定の文書化
 
-3. **残存コード品質問題の解決**【優先度中】
+2. **残存コード品質問題の解決**【優先度: 中】
    - 31件のRuffエラーの修正
    - SIM117（ネストしたwith文）の解消
    - B904（例外チェーン）の実装
    - コード品質基準の文書化
 
-4. **データ整合性保証機能の強化**
+3. **データ整合性保証機能の強化**
    - 定期的な整合性チェックジョブ
    - 不整合データの検出と報告
    - 自動修復機能（設定可能）
    - データ同期機能
 
-3. **デッドロック検出・回避**
+4. **デッドロック検出・回避**
    - 分散トランザクションでのデッドロック検出
    - タイムアウトベースの回避戦略
    - ロック順序の最適化
 
-4. **パフォーマンス最適化**
+5. **パフォーマンス最適化**
    - クエリ最適化機能の強化
    - 接続プールの最適化
    - バッチ処理の並列化
    - 実行計画の分析と改善提案
 
-5. **運用機能の強化**
+6. **運用機能の強化**
    - バックアップ・リストア機能
    - サーキットブレーカーパターンの実装
    - 障害時の自動復旧機能
 
-6. **テストカバレッジの改善**
+7. **テストカバレッジの改善**
    - パフォーマンステストの実装
    - カバレッジレポートの生成と分析
    - 結合テストの拡充
@@ -361,14 +365,14 @@ Neo4jとPostgreSQLの統合管理を行い、グラフデータとリレーシ�
 - **モック実装**: ✅ 完了（2025-07-04）、全機能実装済み
 - **統合状況**: 
   - ast2graph統合: ✅ 完了
-  - intent_store統合: ✅ 完了
+  - intent_store統合: ✅ 完了（2025-07-04）
   - code_intent_search統合: ✅ 完了（2025-01-03）
 
 ## 備考
 - ast2graphライブラリからのグラフデータを受け取るstore_ast_graphメソッド実装済み
 - intent_storeライブラリとの連携機能実装済み（link_intent_to_astメソッド）
 - code_intent_searchライブラリとの統合機能実装済み（search_unifiedメソッド）
-- 2025-01-03時点で全ての統合機能（ast2graph、intent_store、code_intent_search）が完了
+- 2025-07-04時点で全ての統合機能（ast2graph、intent_store、code_intent_search）が完了
 - SearchManagerクラスによる統合検索機能の提供
 - グラフ検索、ベクトル検索、全文検索の統合とランキング機能実装済み
 - プロジェクトはCI/CD環境が整備され、包括的なテストカバレッジを維持
