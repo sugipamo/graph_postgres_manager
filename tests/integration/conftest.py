@@ -94,7 +94,9 @@ async def clean_postgres(manager: GraphPostgresManager) -> AsyncGenerator[None, 
     """各テスト前後でPostgreSQLデータベースをクリーンアップ"""
     # テスト前のクリーンアップ（前回の実行データを削除）
     try:
-        await manager.postgres.execute_query("DELETE FROM graph_data.metadata WHERE key LIKE 'test_key_%%'")
+        await manager.postgres.execute_query(
+            "DELETE FROM graph_data.metadata WHERE key LIKE 'test_key_%%'"
+        )
     except Exception:
         # テーブルが存在しない場合は無視
         pass

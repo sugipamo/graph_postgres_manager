@@ -40,8 +40,7 @@ class TestConnectionManagement:
         """Neo4jの同時接続テスト"""
         async def run_query(index: int):
             query = f"CREATE (n:TestNode {{index: {index}}}) RETURN n"
-            result = await manager.neo4j_connection.execute_query(query)
-            return result
+            return await manager.neo4j_connection.execute_query(query)
         
         # 複数の同時クエリを実行
         tasks = [run_query(i) for i in range(10)]
@@ -59,7 +58,7 @@ class TestConnectionManagement:
         await manager.neo4j_connection.execute_query("MATCH (n:TestNode) DELETE n")
     
     @pytest.mark.asyncio
-    async def test_postgres_connection_pool(self, manager: GraphPostgresManager, clean_postgres):
+    async def test_postgres_connection_pool(self, manager: GraphPostgresManager, _clean_postgres):
         """PostgreSQLのコネクションプールテスト"""
         async def insert_data(index: int):
             query = """
@@ -67,10 +66,9 @@ class TestConnectionManagement:
             VALUES (%(key)s, %(value)s) 
             RETURNING id
             """
-            result = await manager.postgres_connection.execute_query(
+            return await manager.postgres_connection.execute_query(
                 query, {"key": f"test_key_{index}", "value": f'{{"index": {index}}}'}
             )
-            return result
         
         # 複数の同時挿入を実行
         tasks = [insert_data(i) for i in range(10)]
@@ -98,7 +96,7 @@ class TestConnectionManagement:
         # 接続が失われたことを確認
         try:
             await manager.neo4j_connection.execute_query("RETURN 1")
-            assert False, "Expected exception when driver is None"
+            raise AssertionError("Expected exception when driver is None")
         except Exception:
             pass
         
@@ -115,7 +113,7 @@ class TestConnectionManagement:
         config_info = manager.get_config_info()
         
         # パスワードがマスクされていることを確認
-        assert config_info["neo4j_password"] == "****"
+        assert config_info["neo4j_password"] == "****"  # noqa: S105
         assert "****" in config_info["postgres_dsn"]
         
         # その他の情報は含まれていることを確認

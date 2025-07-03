@@ -3,11 +3,8 @@
 import json
 from typing import Any
 
-from ..connections.postgres import PostgresConnection
-from ..exceptions import (
-    DataOperationError,
-    ValidationError,
-)
+from graph_postgres_manager.connections.postgres import PostgresConnection
+from graph_postgres_manager.exceptions import DataOperationError, ValidationError
 
 
 class IntentManager:

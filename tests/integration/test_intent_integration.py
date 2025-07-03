@@ -270,4 +270,4 @@ class TestIntentIntegration:
             all_mappings.extend(nodes)
         
         assert len(all_mappings) == 5
-        assert len(set(m["ast_node_id"] for m in all_mappings)) == 5
+        assert len({m["ast_node_id"] for m in all_mappings}) == 5

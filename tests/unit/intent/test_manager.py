@@ -257,7 +257,8 @@ class TestIntentManager:
         
         # Test removing all mappings for an intent
         mock_postgres.execute.reset_mock()
-        mock_postgres.execute.return_value = [{"1": 1}, {"1": 1}]  # RETURNING 1 for each deleted row
+        # RETURNING 1 for each deleted row
+        mock_postgres.execute.return_value = [{"1": 1}, {"1": 1}]
         
         count = await intent_manager.remove_intent_mapping("intent_123")
         

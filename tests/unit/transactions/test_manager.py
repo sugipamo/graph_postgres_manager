@@ -122,7 +122,9 @@ class TestTransactionManager:
     async def test_rollback_failure_handling(self, transaction_manager):
         """ロールバック失敗時の処理テスト"""
         transaction_manager.neo4j_connection.execute_query.side_effect = Exception("Query failed")
-        transaction_manager.postgres_connection.rollback_transaction.side_effect = Exception("Rollback failed")
+        transaction_manager.postgres_connection.rollback_transaction.side_effect = (
+            Exception("Rollback failed")
+        )
         
         with pytest.raises(TransactionRollbackError):
             async with transaction_manager.transaction() as ctx:

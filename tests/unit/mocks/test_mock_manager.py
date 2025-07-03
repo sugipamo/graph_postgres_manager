@@ -160,7 +160,11 @@ class TestMockGraphPostgresManager:
             graph_data = {
                 "nodes": [
                     {"id": "n1", "labels": ["Function"], "properties": {"name": "calculate_sum"}},
-                    {"id": "n2", "labels": ["Function"], "properties": {"name": "calculate_product"}}
+                    {
+                        "id": "n2",
+                        "labels": ["Function"],
+                        "properties": {"name": "calculate_product"}
+                    }
                 ],
                 "edges": []
             }

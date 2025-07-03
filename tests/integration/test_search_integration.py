@@ -17,7 +17,12 @@ class TestSearchIntegration:
             "nodes": [
                 {"id": "mod1", "node_type": "Module", "source_id": "test_file.py"},
                 {"id": "func1", "node_type": "FunctionDef", "value": "calculate_sum", "lineno": 10},
-                {"id": "func2", "node_type": "FunctionDef", "value": "calculate_product", "lineno": 20},
+                {
+                    "id": "func2",
+                    "node_type": "FunctionDef",
+                    "value": "calculate_product",
+                    "lineno": 20
+                },
                 {"id": "class1", "node_type": "ClassDef", "value": "Calculator", "lineno": 30},
             ],
             "edges": [
@@ -33,7 +38,9 @@ class TestSearchIntegration:
         yield
         
         # Cleanup
-        await manager.neo4j.execute_query("MATCH (n:ASTNode) WHERE n.source_id = 'test_file.py' DETACH DELETE n")
+        await manager.neo4j.execute_query(
+            "MATCH (n:ASTNode) WHERE n.source_id = 'test_file.py' DETACH DELETE n"
+        )
     
     @pytest.mark.asyncio
     async def test_search_by_function_name(self, manager, prepared_data):

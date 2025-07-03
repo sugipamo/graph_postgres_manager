@@ -1,6 +1,7 @@
 """Unit tests for StatsCollector."""
 
 import asyncio
+import contextlib
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -283,10 +284,8 @@ async def test_start_continuous_collection(stats_collector, mock_connection):
             # Cancel the task
             collection_task.cancel()
             
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await collection_task
-            except asyncio.CancelledError:
-                pass
             
             # Verify collection was attempted
             assert mock_collect.called

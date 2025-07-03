@@ -66,14 +66,14 @@ class MockNeo4jConnection:
         self,
         query: str,
         parameters: dict[str, Any] | None = None,
-        database: str | None = None
+        _database: str | None = None
     ) -> list[dict[str, Any]]:
         """Execute a Cypher-like query.
         
         Args:
             query: Query string
             parameters: Query parameters
-            database: Target database (ignored in mock)
+            _database: Target database (ignored in mock)
             
         Returns:
             Query results
@@ -117,18 +117,18 @@ class MockNeo4jConnection:
     
     async def batch_insert(
         self,
-        query: str,
+        _query: str,
         data: list[dict[str, Any]],
         batch_size: int = 1000,
-        database: str | None = None
+        _database: str | None = None
     ) -> int:
         """Perform batch insert operation.
         
         Args:
-            query: Query template
+            _query: Query template
             data: List of data dictionaries
             batch_size: Batch size for processing
-            database: Target database (ignored in mock)
+            _database: Target database (ignored in mock)
             
         Returns:
             Number of inserted records

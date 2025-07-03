@@ -50,9 +50,9 @@ class TestInMemoryDataStore:
         store = InMemoryDataStore()
         
         # Create nodes with different labels
-        id1 = store.create_node(["Person"], {"name": "Alice"})
-        id2 = store.create_node(["Person", "Manager"], {"name": "Bob"})
-        id3 = store.create_node(["Department"], {"name": "IT"})
+        store.create_node(["Person"], {"name": "Alice"})
+        store.create_node(["Person", "Manager"], {"name": "Bob"})
+        store.create_node(["Department"], {"name": "IT"})
         
         # Test label queries
         persons = store.get_nodes_by_label("Person")
@@ -127,12 +127,12 @@ class TestInMemoryDataStore:
         assert store.schemas["users"]["name"] == "text"
         
         # Insert records
-        idx1 = store.insert_record("users", {
+        store.insert_record("users", {
             "name": "Alice",
             "email": "alice@example.com"
         })
         
-        idx2 = store.insert_record("users", {
+        store.insert_record("users", {
             "name": "Bob",
             "email": "bob@example.com"
         })
@@ -229,7 +229,7 @@ class TestInMemoryDataStore:
             "content": "Java programming for beginners"
         })
         
-        id3 = store.create_node(["Document"], {
+        store.create_node(["Document"], {
             "title": "Database Design",
             "content": "SQL and NoSQL databases"
         })

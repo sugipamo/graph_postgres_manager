@@ -445,7 +445,7 @@ class GraphPostgresManager:
     
     # AST Graph Storage
     
-    async def store_ast_graph(
+    async def store_ast_graph(  # noqa: PLR0912
         self,
         graph_data: dict[str, Any],
         source_id: str,
@@ -593,7 +593,7 @@ class GraphPostgresManager:
             logger.error("Failed to store AST graph: %s", e)
             raise DataOperationError(f"Failed to store AST graph: {e}") from e
     
-    def _validate_ast_graph(self, graph_data: dict[str, Any]) -> None:
+    def _validate_ast_graph(self, graph_data: dict[str, Any]) -> None:  # noqa: PLR0912
         """Validate AST graph data structure.
         
         Args:

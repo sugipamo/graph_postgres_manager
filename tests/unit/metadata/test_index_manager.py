@@ -57,7 +57,9 @@ async def test_get_index_info(index_manager, mock_connection):
             "is_live": True,
             "is_replica_identity": False,
             "columns": ["email"],
-            "index_definition": "CREATE UNIQUE INDEX users_email_idx ON public.users USING btree (email)",
+            "index_definition": (
+                "CREATE UNIQUE INDEX users_email_idx ON public.users USING btree (email)"
+            ),
             "size_bytes": 32768,
             "index_scans": 500,
             "tuples_read": 2000,

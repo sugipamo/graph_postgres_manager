@@ -8,7 +8,7 @@ import asyncio
 import logging
 import time
 import uuid
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from datetime import datetime
 from typing import Any
 
@@ -149,10 +149,8 @@ class MockGraphPostgresManager:
         """Close all connections and clean up resources."""
         if self._health_check_task:
             self._health_check_task.cancel()
-            try:
+            with suppress(asyncio.CancelledError):
                 await self._health_check_task
-            except asyncio.CancelledError:
-                pass
         
         await asyncio.gather(
             self.neo4j.disconnect(),
@@ -669,10 +667,7 @@ class MockGraphPostgresManager:
     def assert_transaction_committed(self) -> bool:
         """Assert that a transaction was committed."""
         # Check transaction log in data store
-        for tx in self._data_store.transaction_log:
-            if tx.get("status") == "committed":
-                return True
-        return False
+        return any(tx.get("status") == "committed" for tx in self._data_store.transaction_log)
     
     def get_mock_stats(self) -> dict[str, Any]:
         """Get mock statistics."""

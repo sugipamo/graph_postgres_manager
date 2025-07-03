@@ -382,8 +382,8 @@ class SchemaManager:
             try:
                 with open(migration_file) as f:
                     migration_sql = f.read()
-            except FileNotFoundError:
-                raise SchemaError(f"Migration file not found: {migration_file}")
+            except FileNotFoundError as e:
+                raise SchemaError(f"Migration file not found: {migration_file}") from e
             
             # Calculate checksum
             checksum = hashlib.sha256(migration_sql.encode()).hexdigest()
@@ -453,7 +453,7 @@ class SchemaManager:
                 migration.status = MigrationStatus.FAILED
                 migration.error_message = str(e)
                 
-                raise SchemaError(f"Migration failed: {e}")
+                raise SchemaError(f"Migration failed: {e}") from e
     
     def clear_cache(self) -> None:
         """Clear the schema cache."""

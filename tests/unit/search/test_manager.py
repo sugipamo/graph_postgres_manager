@@ -104,7 +104,9 @@ class TestSearchManager:
         assert results[0].metadata == {"type": "doc"}
     
     @pytest.mark.asyncio
-    async def test_unified_search(self, search_manager, mock_neo4j_connection, mock_postgres_connection):
+    async def test_unified_search(
+        self, search_manager, mock_neo4j_connection, mock_postgres_connection
+    ):
         """Test unified search across graph and text types."""
         # Mock Neo4j response
         mock_neo4j_connection.execute_query.return_value = [
@@ -113,7 +115,13 @@ class TestSearchManager:
         
         # Mock PostgreSQL response
         mock_postgres_connection.execute_query.return_value = [
-            {"id": "text1", "source_id": "source1", "content": "test content", "metadata": "{}", "rank": 0.7}
+            {
+                "id": "text1",
+                "source_id": "source1",
+                "content": "test content",
+                "metadata": "{}",
+                "rank": 0.7
+            }
         ]
         
         query = SearchQuery(
@@ -152,7 +160,8 @@ class TestSearchManager:
         results = [
             SearchResult(id="1", source_id="s1", score=0.5, search_type=SearchType.GRAPH),
             SearchResult(id="2", source_id="s1", score=0.8, search_type=SearchType.TEXT),
-            SearchResult(id="1", source_id="s1", score=0.6, search_type=SearchType.TEXT),  # Duplicate
+            # Duplicate
+            SearchResult(id="1", source_id="s1", score=0.6, search_type=SearchType.TEXT),
             SearchResult(id="3", source_id="s1", score=0.7, search_type=SearchType.GRAPH),
         ]
         

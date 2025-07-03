@@ -145,6 +145,6 @@ class MockTransactionManager:
     
     async def rollback_all(self) -> None:
         """Rollback all active transactions."""
-        for tx_id, tx_context in list(self._active_transactions.items()):
+        for _tx_id, tx_context in list(self._active_transactions.items()):
             if not tx_context._committed and not tx_context._rolled_back:
                 await tx_context.rollback()

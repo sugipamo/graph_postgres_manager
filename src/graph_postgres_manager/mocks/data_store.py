@@ -311,7 +311,7 @@ class InMemoryDataStore:
         properties: dict[str, Any]
     ) -> None:
         """Update text search index with node properties."""
-        for key, value in properties.items():
+        for _key, value in properties.items():
             if isinstance(value, str):
                 # Simple tokenization
                 words = value.lower().split()
@@ -380,8 +380,14 @@ class InMemoryDataStore:
                     "source_id": mapping["source_id"],
                     "confidence": mapping["confidence"],
                     "metadata": mapping["metadata"],
-                    "created_at": mapping["created_at"].isoformat() if mapping.get("created_at") else None,
-                    "updated_at": mapping["updated_at"].isoformat() if mapping.get("updated_at") else None
+                    "created_at": (
+                        mapping["created_at"].isoformat()
+                        if mapping.get("created_at") else None
+                    ),
+                    "updated_at": (
+                        mapping["updated_at"].isoformat()
+                        if mapping.get("updated_at") else None
+                    )
                 })
             else:
                 # Return intent info
@@ -390,8 +396,14 @@ class InMemoryDataStore:
                     "source_id": mapping["source_id"],
                     "confidence": mapping["confidence"],
                     "metadata": mapping["metadata"],
-                    "created_at": mapping["created_at"].isoformat() if mapping.get("created_at") else None,
-                    "updated_at": mapping["updated_at"].isoformat() if mapping.get("updated_at") else None
+                    "created_at": (
+                        mapping["created_at"].isoformat()
+                        if mapping.get("created_at") else None
+                    ),
+                    "updated_at": (
+                        mapping["updated_at"].isoformat()
+                        if mapping.get("updated_at") else None
+                    )
                 })
         
         return results

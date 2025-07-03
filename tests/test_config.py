@@ -13,18 +13,20 @@ class TestConnectionConfig:
     
     def test_default_config(self):
         """Test default configuration values."""
-        config = ConnectionConfig()
-        
-        assert config.neo4j_uri == "bolt://localhost:7687"
-        assert config.neo4j_auth == ("neo4j", "password")
-        assert config.postgres_dsn == "postgresql://user:pass@localhost/dbname"
-        assert config.connection_pool_size == 10
-        assert config.max_retry_attempts == 3
-        assert config.timeout_seconds == 30
-        assert config.health_check_interval == 60
-        assert config.enable_auto_reconnect is True
-        assert config.retry_backoff_factor == 2.0
-        assert config.retry_max_delay == 60
+        # Clear environment variables to test defaults
+        with patch.dict(os.environ, {}, clear=True):
+            config = ConnectionConfig()
+            
+            assert config.neo4j_uri == "bolt://localhost:7687"
+            assert config.neo4j_auth == ("neo4j", "password")
+            assert config.postgres_dsn == "postgresql://user:pass@localhost/dbname"
+            assert config.connection_pool_size == 10
+            assert config.max_retry_attempts == 3
+            assert config.timeout_seconds == 30
+            assert config.health_check_interval == 60
+            assert config.enable_auto_reconnect is True
+            assert config.retry_backoff_factor == 2.0
+            assert config.retry_max_delay == 60
     
     def test_custom_config(self):
         """Test custom configuration values."""
@@ -106,10 +108,16 @@ class TestConnectionConfig:
         with pytest.raises(ConfigurationError, match="postgres_dsn cannot be empty"):
             ConnectionConfig(postgres_dsn="")
         
-        with pytest.raises(ConfigurationError, match="neo4j_auth must contain valid username and password"):
+        with pytest.raises(
+            ConfigurationError,
+            match="neo4j_auth must contain valid username and password"
+        ):
             ConnectionConfig(neo4j_auth=("", "pass"))
         
-        with pytest.raises(ConfigurationError, match="neo4j_auth must contain valid username and password"):
+        with pytest.raises(
+            ConfigurationError,
+            match="neo4j_auth must contain valid username and password"
+        ):
             ConnectionConfig(neo4j_auth=("user", ""))
     
     def test_mask_sensitive_data(self):
@@ -122,7 +130,7 @@ class TestConnectionConfig:
         masked = config.mask_sensitive_data()
         
         assert masked["neo4j_user"] == "test_user"
-        assert masked["neo4j_password"] == "****"
+        assert masked["neo4j_password"] == "****"  # noqa: S105
         assert masked["postgres_dsn"] == "postgresql://user:****@localhost/db"
         assert masked["connection_pool_size"] == 10
     

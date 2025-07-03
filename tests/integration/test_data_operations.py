@@ -12,7 +12,7 @@ class TestDataOperations:
     """データ操作のテストクラス"""
     
     @pytest.mark.asyncio
-    async def test_neo4j_node_crud(self, manager: GraphPostgresManager, clean_neo4j):
+    async def test_neo4j_node_crud(self, manager: GraphPostgresManager, _clean_neo4j):
         """Neo4jのノードCRUD操作テスト"""
         # Create
         create_query = """
@@ -52,7 +52,7 @@ class TestDataOperations:
         assert len(result) == 0
     
     @pytest.mark.asyncio
-    async def test_neo4j_relationship_crud(self, manager: GraphPostgresManager, clean_neo4j):
+    async def test_neo4j_relationship_crud(self, manager: GraphPostgresManager, _clean_neo4j):
         """Neo4jのリレーションシップCRUD操作テスト"""
         # Create nodes and relationship
         create_query = """
@@ -97,7 +97,7 @@ class TestDataOperations:
         assert len(result) == 0
     
     @pytest.mark.asyncio
-    async def test_postgres_crud(self, manager: GraphPostgresManager, clean_postgres):
+    async def test_postgres_crud(self, manager: GraphPostgresManager, _clean_postgres):
         """PostgreSQLのCRUD操作テスト"""
         # Create
         insert_query = """
@@ -110,7 +110,7 @@ class TestDataOperations:
             insert_query, {"key": "test_config", "value": json.dumps(test_data)}
         )
         assert len(result) == 1
-        record_id = result[0]["id"]
+        result[0]["id"]
         assert result[0]["key"] == "test_config"
         
         # Read
@@ -147,7 +147,7 @@ class TestDataOperations:
         assert len(result) == 0
     
     @pytest.mark.asyncio
-    async def test_batch_insert_neo4j(self, manager: GraphPostgresManager, clean_neo4j):
+    async def test_batch_insert_neo4j(self, manager: GraphPostgresManager, _clean_neo4j):
         """Neo4jのバッチインサートテスト"""
         # データを準備
         nodes = [
@@ -176,7 +176,7 @@ class TestDataOperations:
         assert count_result[0]["count"] == 100
     
     @pytest.mark.asyncio
-    async def test_batch_insert_postgres(self, manager: GraphPostgresManager, clean_postgres):
+    async def test_batch_insert_postgres(self, manager: GraphPostgresManager, _clean_postgres):
         """PostgreSQLのバッチインサートテスト"""
         # データを準備
         data = [
@@ -201,7 +201,7 @@ class TestDataOperations:
         assert count_result[0]["count"] == 100
     
     @pytest.mark.asyncio
-    async def test_large_data_handling(self, manager: GraphPostgresManager, clean_databases):
+    async def test_large_data_handling(self, manager: GraphPostgresManager, _clean_databases):
         """大量データの処理テスト"""
         # Neo4jに大量ノードを作成
         large_nodes = [
@@ -228,7 +228,10 @@ class TestDataOperations:
         
         # PostgreSQLに大量データを挿入
         large_data = [
-            {"key": f"large_key_{i}", "value": json.dumps({"id": i, "data": f"Large data {i}" * 10})}
+            {
+                "key": f"large_key_{i}",
+                "value": json.dumps({"id": i, "data": f"Large data {i}" * 10})
+            }
             for i in range(1000)
         ]
         

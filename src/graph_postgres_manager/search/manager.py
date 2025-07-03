@@ -146,7 +146,10 @@ class SearchManager:
         
         # Add text search condition only if query is not empty
         if query.query:
-            conditions.append("toLower(n.value) CONTAINS $search_query OR toLower(n.id) CONTAINS $search_query")
+            conditions.append(
+                "toLower(n.value) CONTAINS $search_query OR "
+                "toLower(n.id) CONTAINS $search_query"
+            )
         
         if query.filters.node_types:
             types = ", ".join(f"'{t}'" for t in query.filters.node_types)
@@ -173,7 +176,8 @@ class SearchManager:
         # Basic full-text search query
         sql = """
         SELECT id, source_id, content, metadata,
-               ts_rank(to_tsvector('english', content), plainto_tsquery('english', %(search_term)s)) as rank
+               ts_rank(to_tsvector('english', content),
+                       plainto_tsquery('english', %(search_term)s)) as rank
         FROM graph_data.search_index
         WHERE to_tsvector('english', content) @@ plainto_tsquery('english', %(search_term)s)
         """

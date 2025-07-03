@@ -282,7 +282,8 @@ class TestTransactionIntegration:
         assert len(neo4j_result) == 1
         
         postgres_result = await transaction_manager.execute_postgres_query(
-            "SELECT COUNT(*) as count FROM transaction_test WHERE node_id IN (%(user_id)s, %(post_id)s)",
+            "SELECT COUNT(*) as count FROM transaction_test "
+            "WHERE node_id IN (%(user_id)s, %(post_id)s)",
             {"user_id": user_id, "post_id": post_id}
         )
         assert postgres_result[0]["count"] == 2
