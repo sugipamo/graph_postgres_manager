@@ -4,16 +4,19 @@ This module provides a complete mock implementation of GraphPostgresManager
 that uses in-memory storage and requires no external dependencies.
 """
 
-from typing import Dict, List, Any, Optional, Union
 import asyncio
-import uuid
+import logging
 import time
-from datetime import datetime
+import uuid
 from contextlib import asynccontextmanager
+from datetime import datetime
+from typing import Any
 
+from .connections import MockNeo4jConnection, MockPostgresConnection
 from .data_store import InMemoryDataStore
-from .connections import MockNeo4jConnection, MockPostgresConnection, ConnectionState
 from .transactions import MockTransactionManager
+
+logger = logging.getLogger(__name__)
 
 
 class MockHealthStatus:
@@ -26,8 +29,8 @@ class MockHealthStatus:
         neo4j_latency_ms: float,
         postgres_latency_ms: float,
         timestamp: datetime,
-        neo4j_error: Optional[str] = None,
-        postgres_error: Optional[str] = None
+        neo4j_error: str | None = None,
+        postgres_error: str | None = None
     ):
         self.neo4j_connected = neo4j_connected
         self.postgres_connected = postgres_connected
@@ -52,7 +55,7 @@ class MockSearchResult:
         type: str,
         source: str,
         score: float,
-        data: Dict[str, Any]
+        data: dict[str, Any]
     ):
         self.id = id
         self.type = type
@@ -68,7 +71,7 @@ class MockGraphPostgresManager:
     in-memory storage instead of real database connections.
     """
     
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize mock manager.
         
         Args:
@@ -87,10 +90,10 @@ class MockGraphPostgresManager:
         
         # State management
         self._is_initialized = False
-        self._health_check_task: Optional[asyncio.Task] = None
+        self._health_check_task: asyncio.Task | None = None
         
         # Managers
-        self._transaction_manager: Optional[MockTransactionManager] = None
+        self._transaction_manager: MockTransactionManager | None = None
         
         # Configuration
         self._error_rate = self.config.get("error_rate", 0.0)
@@ -98,7 +101,7 @@ class MockGraphPostgresManager:
         self._timeout_simulation = self.config.get("timeout_simulation", False)
         
         # Call tracking
-        self._call_history: List[Dict[str, Any]] = []
+        self._call_history: list[dict[str, Any]] = []
     
     @property
     def neo4j_connection(self):
@@ -182,15 +185,15 @@ class MockGraphPostgresManager:
                 await self.health_check()
             except asyncio.CancelledError:
                 break
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Health check loop error: {e}")
     
     async def execute_neo4j_query(
         self,
         query: str,
-        parameters: Optional[Dict[str, Any]] = None,
-        database: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        parameters: dict[str, Any] | None = None,
+        database: str | None = None
+    ) -> list[dict[str, Any]]:
         """Execute Cypher query on Neo4j."""
         self._record_call("execute_neo4j_query", {
             "query": query,
@@ -206,9 +209,9 @@ class MockGraphPostgresManager:
     async def execute_postgres_query(
         self,
         query: str,
-        parameters: Optional[Dict[str, Any]] = None,
+        parameters: dict[str, Any] | None = None,
         fetch_all: bool = True
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Execute SQL query on PostgreSQL."""
         self._record_call("execute_postgres_query", {
             "query": query,
@@ -224,9 +227,9 @@ class MockGraphPostgresManager:
     async def batch_insert_neo4j(
         self,
         query: str,
-        data: List[Dict[str, Any]],
+        data: list[dict[str, Any]],
         batch_size: int = 1000,
-        database: Optional[str] = None
+        database: str | None = None
     ) -> int:
         """Batch insert data into Neo4j."""
         self._record_call("batch_insert_neo4j", {
@@ -244,7 +247,7 @@ class MockGraphPostgresManager:
     async def batch_insert_postgres(
         self,
         query: str,
-        data: List[Dict[str, Any]]
+        data: list[dict[str, Any]]
     ) -> int:
         """Batch insert data into PostgreSQL."""
         self._record_call("batch_insert_postgres", {
@@ -258,7 +261,7 @@ class MockGraphPostgresManager:
         return await self.postgres.execute_many(query, data)
     
     @asynccontextmanager
-    async def transaction(self, timeout: Optional[float] = None):
+    async def transaction(self, timeout: float | None = None):
         """Create transaction context."""
         if not self._is_initialized:
             raise RuntimeError("Manager not initialized")
@@ -268,10 +271,10 @@ class MockGraphPostgresManager:
     
     async def store_ast_graph(
         self,
-        graph_data: Dict[str, Any],
+        graph_data: dict[str, Any],
         source_id: str,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Store AST graph data in Neo4j.
         
         Args:
@@ -334,12 +337,12 @@ class MockGraphPostgresManager:
     
     async def search_unified(
         self,
-        query: Union[str, Dict[str, Any]],
+        query: str | dict[str, Any],
         include_graph: bool = True,
         include_text: bool = True,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: dict[str, Any] | None = None,
         max_results: int = 100
-    ) -> List[MockSearchResult]:
+    ) -> list[MockSearchResult]:
         """Perform unified search across graph and text data.
         
         Args:
@@ -394,12 +397,12 @@ class MockGraphPostgresManager:
     async def link_intent_to_ast(
         self,
         intent_id: str,
-        ast_node_ids: List[str],
+        ast_node_ids: list[str],
         source_id: str,
         confidence: float = 1.0,
-        metadata: Optional[Dict[str, Any]] = None,
-        intent_vector: Optional[List[float]] = None
-    ) -> Dict[str, Any]:
+        metadata: dict[str, Any] | None = None,
+        intent_vector: list[float] | None = None
+    ) -> dict[str, Any]:
         """Link intent data to AST nodes.
         
         Args:
@@ -465,7 +468,7 @@ class MockGraphPostgresManager:
         self,
         intent_id: str,
         min_confidence: float = 0.0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get AST nodes linked to an intent.
         
         Args:
@@ -492,7 +495,7 @@ class MockGraphPostgresManager:
         self,
         ast_node_id: str,
         min_confidence: float = 0.0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get intents linked to an AST node.
         
         Args:
@@ -517,10 +520,10 @@ class MockGraphPostgresManager:
     
     async def search_ast_by_intent_vector(
         self,
-        intent_vector: List[float],
+        intent_vector: list[float],
         limit: int = 10,
         threshold: float = 0.7
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search for AST nodes by intent vector similarity.
         
         Args:
@@ -584,7 +587,7 @@ class MockGraphPostgresManager:
     async def remove_intent_mapping(
         self,
         intent_id: str,
-        ast_node_id: Optional[str] = None
+        ast_node_id: str | None = None
     ) -> int:
         """Remove intent-AST mappings.
         
@@ -614,7 +617,7 @@ class MockGraphPostgresManager:
         """Async context manager exit."""
         await self.close()
     
-    def get_config_info(self) -> Dict[str, Any]:
+    def get_config_info(self) -> dict[str, Any]:
         """Get configuration information."""
         return {
             "neo4j_latency": self.config.get("neo4j_latency", 1),
@@ -623,7 +626,7 @@ class MockGraphPostgresManager:
             "max_connections": self._max_connections
         }
     
-    def get_connection_status(self) -> Dict[str, Any]:
+    def get_connection_status(self) -> dict[str, Any]:
         """Get current connection status."""
         return {
             "initialized": self._is_initialized,
@@ -639,7 +642,7 @@ class MockGraphPostgresManager:
     
     # Mock-specific methods for testing
     
-    def configure(self, config: Dict[str, Any]) -> None:
+    def configure(self, config: dict[str, Any]) -> None:
         """Update mock configuration."""
         self.config.update(config)
         self._error_rate = self.config.get("error_rate", 0.0)
@@ -651,7 +654,7 @@ class MockGraphPostgresManager:
         self._data_store.clear()
         self._call_history.clear()
     
-    def get_call_history(self) -> List[Dict[str, Any]]:
+    def get_call_history(self) -> list[dict[str, Any]]:
         """Get history of method calls."""
         return self._call_history.copy()
     
@@ -671,11 +674,11 @@ class MockGraphPostgresManager:
                 return True
         return False
     
-    def get_mock_stats(self) -> Dict[str, Any]:
+    def get_mock_stats(self) -> dict[str, Any]:
         """Get mock statistics."""
         return self._data_store.get_stats()
     
-    def _record_call(self, method: str, args: Dict[str, Any]) -> None:
+    def _record_call(self, method: str, args: dict[str, Any]) -> None:
         """Record a method call for testing."""
         self._call_history.append({
             "method": method,
@@ -683,7 +686,7 @@ class MockGraphPostgresManager:
             "timestamp": time.time()
         })
     
-    def _apply_filters(self, result: MockSearchResult, filters: Dict[str, Any]) -> bool:
+    def _apply_filters(self, result: MockSearchResult, filters: dict[str, Any]) -> bool:
         """Apply filters to a search result."""
         # Simple filter implementation
         for key, value in filters.items():

@@ -1,6 +1,5 @@
 """Unit tests for MockGraphPostgresManager."""
 
-import asyncio
 import pytest
 
 from graph_postgres_manager.mocks import MockGraphPostgresManager

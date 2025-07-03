@@ -6,8 +6,6 @@ from datetime import datetime
 import pytest
 import pytest_asyncio
 
-from graph_postgres_manager import GraphPostgresManager
-
 
 @pytest.mark.integration
 class TestTransactionIntegration:

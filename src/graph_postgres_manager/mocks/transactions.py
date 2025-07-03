@@ -4,11 +4,11 @@ This module provides mock transaction management that simulates
 distributed transactions across Neo4j and PostgreSQL.
 """
 
-from typing import Dict, Any, Optional, List
-import uuid
-import time
 import asyncio
+import time
+import uuid
 from contextlib import asynccontextmanager
+from typing import Any
 
 from .data_store import InMemoryDataStore
 
@@ -22,7 +22,7 @@ class MockTransactionContext:
         data_store: InMemoryDataStore,
         neo4j_conn: Any,
         postgres_conn: Any,
-        timeout: Optional[float] = None
+        timeout: float | None = None
     ):
         """Initialize transaction context.
         
@@ -94,10 +94,10 @@ class MockTransactionManager:
         self.postgres_connection = postgres_connection
         self.enable_two_phase_commit = enable_two_phase_commit
         self.enable_logging = enable_logging
-        self._active_transactions: Dict[str, MockTransactionContext] = {}
+        self._active_transactions: dict[str, MockTransactionContext] = {}
     
     @asynccontextmanager
-    async def begin_transaction(self, timeout: Optional[float] = None):
+    async def begin_transaction(self, timeout: float | None = None):
         """Begin a new transaction.
         
         Args:
@@ -129,7 +129,7 @@ class MockTransactionManager:
             if not tx_context._committed and not tx_context._rolled_back:
                 await tx_context.commit()
                 
-        except Exception as e:
+        except Exception:
             # Auto-rollback on exception
             if not tx_context._committed and not tx_context._rolled_back:
                 await tx_context.rollback()
@@ -139,7 +139,7 @@ class MockTransactionManager:
             if tx_id in self._active_transactions:
                 del self._active_transactions[tx_id]
     
-    def get_active_transactions(self) -> List[str]:
+    def get_active_transactions(self) -> list[str]:
         """Get list of active transaction IDs."""
         return list(self._active_transactions.keys())
     

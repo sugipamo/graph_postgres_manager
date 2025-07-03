@@ -43,7 +43,7 @@ class SchemaManager:
             # If script not found, create minimal schema
             await self._create_minimal_metadata_schema()
         except Exception as e:
-            raise MetadataError(f"Failed to initialize metadata schema: {e}")
+            raise MetadataError(f"Failed to initialize metadata schema: {e}") from e
     
     async def _create_minimal_metadata_schema(self) -> None:
         """Create minimal metadata schema without script file."""

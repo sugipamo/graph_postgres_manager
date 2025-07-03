@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 
@@ -10,14 +10,14 @@ from uuid import UUID
 class IntentMapping:
     """Represents a mapping between an intent and AST nodes."""
     
-    id: Optional[UUID] = None
+    id: UUID | None = None
     intent_id: str = ""
     ast_node_id: str = ""
     source_id: str = ""
     confidence: float = 1.0
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 @dataclass
@@ -25,9 +25,9 @@ class IntentVector:
     """Represents an intent with its vector embedding."""
     
     intent_id: str
-    vector: List[float]
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    created_at: Optional[datetime] = None
+    vector: list[float]
+    metadata: dict[str, Any] = field(default_factory=dict)
+    created_at: datetime | None = None
     
     def __post_init__(self):
         """Validate vector dimensions."""

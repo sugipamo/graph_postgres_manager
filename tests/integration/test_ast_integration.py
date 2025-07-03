@@ -2,8 +2,6 @@
 
 import pytest
 
-from graph_postgres_manager import GraphPostgresManager
-
 
 class TestASTIntegration:
     """Integration tests for AST storage in real databases."""

@@ -1,16 +1,13 @@
 """Intent management functionality for graph_postgres_manager."""
 
 import json
-from typing import Any, Dict, List, Optional, Tuple
-from uuid import UUID
+from typing import Any
 
 from ..connections.postgres import PostgresConnection
 from ..exceptions import (
-    GraphPostgresManagerException,
     DataOperationError,
     ValidationError,
 )
-from .models import IntentMapping, IntentVector
 
 
 class IntentManager:
@@ -27,12 +24,12 @@ class IntentManager:
     async def link_intent_to_ast(
         self,
         intent_id: str,
-        ast_node_ids: List[str],
+        ast_node_ids: list[str],
         source_id: str,
         confidence: float = 1.0,
-        metadata: Optional[Dict[str, Any]] = None,
-        intent_vector: Optional[List[float]] = None
-    ) -> Dict[str, Any]:
+        metadata: dict[str, Any] | None = None,
+        intent_vector: list[float] | None = None
+    ) -> dict[str, Any]:
         """Link intent data to AST nodes.
         
         Args:
@@ -116,13 +113,13 @@ class IntentManager:
             
         except Exception as e:
             await self.postgres.execute("ROLLBACK")
-            raise DataOperationError(f"Failed to link intent to AST: {str(e)}") from e
+            raise DataOperationError(f"Failed to link intent to AST: {e!s}") from e
     
     async def get_ast_nodes_by_intent(
         self, 
         intent_id: str,
         min_confidence: float = 0.0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get AST nodes linked to an intent.
         
         Args:
@@ -163,7 +160,7 @@ class IntentManager:
         self,
         ast_node_id: str,
         min_confidence: float = 0.0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get intents linked to an AST node.
         
         Args:
@@ -202,10 +199,10 @@ class IntentManager:
     
     async def search_ast_by_intent_vector(
         self,
-        intent_vector: List[float],
+        intent_vector: list[float],
         limit: int = 10,
         threshold: float = 0.7
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search for AST nodes by intent vector similarity.
         
         Args:
@@ -233,7 +230,7 @@ class IntentManager:
             stored_vector = row["vector"]
             
             # Calculate cosine similarity
-            dot_product = sum(a * b for a, b in zip(intent_vector, stored_vector))
+            dot_product = sum(a * b for a, b in zip(intent_vector, stored_vector, strict=False))
             norm1 = sum(a * a for a in intent_vector) ** 0.5
             norm2 = sum(b * b for b in stored_vector) ** 0.5
             similarity = dot_product / (norm1 * norm2) if norm1 > 0 and norm2 > 0 else 0
@@ -291,14 +288,14 @@ class IntentManager:
             WHERE intent_id = %s AND ast_node_id = %s
         """
         
-        result = await self.postgres.execute(query, (new_confidence, intent_id, ast_node_id))
+        await self.postgres.execute(query, (new_confidence, intent_id, ast_node_id))
         # For UPDATE queries, psycopg returns empty list when successful
         return True  # If no exception was raised, the update was successful
     
     async def remove_intent_mapping(
         self,
         intent_id: str,
-        ast_node_id: Optional[str] = None
+        ast_node_id: str | None = None
     ) -> int:
         """Remove intent-AST mappings.
         
@@ -323,8 +320,8 @@ class IntentManager:
     
     async def batch_link_intents(
         self,
-        mappings: List[Tuple[str, List[str], str, float, Optional[Dict[str, Any]]]]
-    ) -> Dict[str, Any]:
+        mappings: list[tuple[str, list[str], str, float, dict[str, Any] | None]]
+    ) -> dict[str, Any]:
         """Batch link multiple intents to AST nodes.
         
         Args:
@@ -355,7 +352,8 @@ class IntentManager:
                         """
                         await self.postgres.execute(
                             query,
-                            (intent_id, ast_node_id, source_id, confidence, json.dumps(metadata or {}))
+                            (intent_id, ast_node_id, source_id, confidence, 
+                             json.dumps(metadata or {}))
                         )
                         total_mappings += 1
                 except Exception:
@@ -365,10 +363,13 @@ class IntentManager:
             
         except Exception as e:
             await self.postgres.execute("ROLLBACK")
-            raise DataOperationError(f"Batch link failed: {str(e)}") from e
+            raise DataOperationError(f"Batch link failed: {e!s}") from e
         
         return {
             "total_mappings": total_mappings,
             "failed_mappings": failed_mappings,
-            "success_rate": (total_mappings - failed_mappings) / total_mappings if total_mappings > 0 else 0
+            "success_rate": (
+                (total_mappings - failed_mappings) / total_mappings 
+                if total_mappings > 0 else 0
+            )
         }

@@ -28,6 +28,7 @@ class TestSearchManager:
     def mock_postgres_connection(self):
         """Create a mock PostgreSQL connection."""
         mock = MagicMock()
+        mock.execute_query = AsyncMock()
         mock.get_connection = MagicMock()
         return mock
     
@@ -77,9 +78,8 @@ class TestSearchManager:
     @pytest.mark.asyncio
     async def test_text_search(self, search_manager, mock_postgres_connection):
         """Test text search functionality."""
-        # Mock connection and fetch
-        mock_conn = AsyncMock()
-        mock_conn.fetch = AsyncMock(return_value=[
+        # Mock execute_query response
+        mock_postgres_connection.execute_query.return_value = [
             {
                 "id": "text1",
                 "source_id": "source1",
@@ -87,13 +87,7 @@ class TestSearchManager:
                 "metadata": '{"type": "doc"}',
                 "rank": 0.8
             }
-        ])
-        
-        mock_context = AsyncMock()
-        mock_context.__aenter__ = AsyncMock(return_value=mock_conn)
-        mock_context.__aexit__ = AsyncMock(return_value=None)
-        
-        mock_postgres_connection.get_connection = MagicMock(return_value=mock_context)
+        ]
         
         query = SearchQuery(
             query="test document",
@@ -118,16 +112,9 @@ class TestSearchManager:
         ]
         
         # Mock PostgreSQL response
-        mock_conn = AsyncMock()
-        mock_conn.fetch = AsyncMock(return_value=[
+        mock_postgres_connection.execute_query.return_value = [
             {"id": "text1", "source_id": "source1", "content": "test content", "metadata": "{}", "rank": 0.7}
-        ])
-        
-        mock_context = AsyncMock()
-        mock_context.__aenter__ = AsyncMock(return_value=mock_conn)
-        mock_context.__aexit__ = AsyncMock(return_value=None)
-        
-        mock_postgres_connection.get_connection = MagicMock(return_value=mock_context)
+        ]
         
         query = SearchQuery(
             query="test",

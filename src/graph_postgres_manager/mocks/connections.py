@@ -4,11 +4,10 @@ This module provides mock connection classes that simulate the behavior
 of real database connections without external dependencies.
 """
 
-from typing import Dict, List, Any, Optional, Tuple
 import asyncio
 import time
-import uuid
 from enum import Enum
+from typing import Any
 
 from .data_store import InMemoryDataStore
 
@@ -25,7 +24,7 @@ class ConnectionState(Enum):
 class MockNeo4jConnection:
     """Mock implementation of Neo4j connection."""
     
-    def __init__(self, data_store: InMemoryDataStore, config: Dict[str, Any]):
+    def __init__(self, data_store: InMemoryDataStore, config: dict[str, Any]):
         """Initialize mock Neo4j connection.
         
         Args:
@@ -52,7 +51,7 @@ class MockNeo4jConnection:
         self.state = ConnectionState.DISCONNECTED
         self.is_connected = False
     
-    async def health_check(self) -> Tuple[bool, float]:
+    async def health_check(self) -> tuple[bool, float]:
         """Perform health check.
         
         Returns:
@@ -66,9 +65,9 @@ class MockNeo4jConnection:
     async def execute_query(
         self,
         query: str,
-        parameters: Optional[Dict[str, Any]] = None,
-        database: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        parameters: dict[str, Any] | None = None,
+        database: str | None = None
+    ) -> list[dict[str, Any]]:
         """Execute a Cypher-like query.
         
         Args:
@@ -119,9 +118,9 @@ class MockNeo4jConnection:
     async def batch_insert(
         self,
         query: str,
-        data: List[Dict[str, Any]],
+        data: list[dict[str, Any]],
         batch_size: int = 1000,
-        database: Optional[str] = None
+        database: str | None = None
     ) -> int:
         """Perform batch insert operation.
         
@@ -157,7 +156,7 @@ class MockNeo4jConnection:
 class MockPostgresConnection:
     """Mock implementation of PostgreSQL connection."""
     
-    def __init__(self, data_store: InMemoryDataStore, config: Dict[str, Any]):
+    def __init__(self, data_store: InMemoryDataStore, config: dict[str, Any]):
         """Initialize mock PostgreSQL connection.
         
         Args:
@@ -187,7 +186,7 @@ class MockPostgresConnection:
         self.state = ConnectionState.DISCONNECTED
         self.is_connected = False
     
-    async def health_check(self) -> Tuple[bool, float]:
+    async def health_check(self) -> tuple[bool, float]:
         """Perform health check.
         
         Returns:
@@ -201,9 +200,9 @@ class MockPostgresConnection:
     async def execute_query(
         self,
         query: str,
-        parameters: Optional[Dict[str, Any]] = None,
+        parameters: dict[str, Any] | None = None,
         fetch_all: bool = True
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Execute an SQL-like query.
         
         Args:
@@ -255,7 +254,7 @@ class MockPostgresConnection:
     async def execute_many(
         self,
         query: str,
-        data: List[Dict[str, Any]]
+        data: list[dict[str, Any]]
     ) -> int:
         """Execute multiple queries.
         
@@ -301,7 +300,7 @@ class MockPostgresConnection:
             "timestamp": "timestamp"
         })
     
-    def _extract_table_name(self, query: str) -> Optional[str]:
+    def _extract_table_name(self, query: str) -> str | None:
         """Extract table name from query (simplified)."""
         query_upper = query.upper()
         
@@ -315,7 +314,7 @@ class MockPostgresConnection:
         
         return None
     
-    def _extract_where_clause(self, parameters: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    def _extract_where_clause(self, parameters: dict[str, Any] | None) -> dict[str, Any] | None:
         """Extract WHERE clause conditions from parameters."""
         if not parameters:
             return None

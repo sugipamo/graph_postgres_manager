@@ -4,10 +4,10 @@ This module provides a zero-dependency, in-memory data store that simulates
 Neo4j and PostgreSQL databases for testing purposes.
 """
 
-from typing import Dict, List, Set, Any, Optional
-from collections import defaultdict
-import uuid
 import time
+import uuid
+from collections import defaultdict
+from typing import Any
 
 
 class InMemoryDataStore:
@@ -16,40 +16,40 @@ class InMemoryDataStore:
     def __init__(self):
         """Initialize empty data structures."""
         # Neo4j data structures
-        self.nodes: Dict[str, Dict[str, Any]] = {}
-        self.relationships: List[Dict[str, Any]] = []
-        self.labels: Dict[str, Set[str]] = defaultdict(set)
-        self.node_relationships: Dict[str, List[int]] = defaultdict(list)
+        self.nodes: dict[str, dict[str, Any]] = {}
+        self.relationships: list[dict[str, Any]] = []
+        self.labels: dict[str, set[str]] = defaultdict(set)
+        self.node_relationships: dict[str, list[int]] = defaultdict(list)
         
         # PostgreSQL data structures
-        self.tables: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
-        self.schemas: Dict[str, Dict[str, str]] = {}
-        self.indexes: Dict[str, Dict[str, Any]] = {}
-        self.sequences: Dict[str, int] = defaultdict(int)
+        self.tables: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        self.schemas: dict[str, dict[str, str]] = {}
+        self.indexes: dict[str, dict[str, Any]] = {}
+        self.sequences: dict[str, int] = defaultdict(int)
         
         # Search indices (simplified)
-        self.text_search: Dict[str, Set[str]] = defaultdict(set)
-        self.vector_data: Dict[str, List[float]] = {}
+        self.text_search: dict[str, set[str]] = defaultdict(set)
+        self.vector_data: dict[str, list[float]] = {}
         
         # Intent management
-        self.intent_mappings: List[Dict[str, Any]] = []
-        self.intent_vectors: Dict[str, Dict[str, Any]] = {}
+        self.intent_mappings: list[dict[str, Any]] = []
+        self.intent_vectors: dict[str, dict[str, Any]] = {}
         
         # Transaction management
-        self.transaction_log: List[Dict[str, Any]] = []
-        self.active_transactions: Dict[str, Dict[str, Any]] = {}
-        self.transaction_data: Dict[str, Dict[str, Any]] = {}
+        self.transaction_log: list[dict[str, Any]] = []
+        self.active_transactions: dict[str, dict[str, Any]] = {}
+        self.transaction_data: dict[str, dict[str, Any]] = {}
         
         # Statistics
         self.query_count = 0
-        self.operation_times: List[float] = []
+        self.operation_times: list[float] = []
         self.last_reset_time = time.time()
     
     def clear(self) -> None:
         """Clear all data (for test isolation)."""
         self.__init__()
     
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get current statistics about the data store."""
         return {
             "nodes_count": len(self.nodes),
@@ -70,7 +70,7 @@ class InMemoryDataStore:
     
     # Neo4j-specific methods
     
-    def create_node(self, labels: List[str], properties: Dict[str, Any]) -> str:
+    def create_node(self, labels: list[str], properties: dict[str, Any]) -> str:
         """Create a new node with given labels and properties."""
         node_id = str(uuid.uuid4())
         
@@ -95,7 +95,7 @@ class InMemoryDataStore:
         source_id: str, 
         target_id: str,
         rel_type: str, 
-        properties: Optional[Dict[str, Any]] = None
+        properties: dict[str, Any] | None = None
     ) -> int:
         """Create a relationship between two nodes."""
         if source_id not in self.nodes:
@@ -120,7 +120,7 @@ class InMemoryDataStore:
         
         return rel_id
     
-    def get_node(self, node_id: str) -> Optional[Dict[str, Any]]:
+    def get_node(self, node_id: str) -> dict[str, Any] | None:
         """Get a node by ID."""
         if node_id in self.nodes:
             node = self.nodes[node_id]
@@ -131,7 +131,7 @@ class InMemoryDataStore:
             }
         return None
     
-    def get_nodes_by_label(self, label: str) -> List[Dict[str, Any]]:
+    def get_nodes_by_label(self, label: str) -> list[dict[str, Any]]:
         """Get all nodes with a specific label."""
         nodes = []
         for node_id in self.labels.get(label, set()):
@@ -140,7 +140,7 @@ class InMemoryDataStore:
                 nodes.append(node)
         return nodes
     
-    def get_relationships_for_node(self, node_id: str) -> List[Dict[str, Any]]:
+    def get_relationships_for_node(self, node_id: str) -> list[dict[str, Any]]:
         """Get all relationships connected to a node."""
         relationships = []
         for rel_id in self.node_relationships.get(node_id, []):
@@ -150,13 +150,13 @@ class InMemoryDataStore:
     
     # PostgreSQL-specific methods
     
-    def create_table(self, table_name: str, schema: Dict[str, str]) -> None:
+    def create_table(self, table_name: str, schema: dict[str, str]) -> None:
         """Create a new table with the given schema."""
         self.schemas[table_name] = schema.copy()
         if table_name not in self.tables:
             self.tables[table_name] = []
     
-    def insert_record(self, table_name: str, record: Dict[str, Any]) -> int:
+    def insert_record(self, table_name: str, record: dict[str, Any]) -> int:
         """Insert a record into a table."""
         if table_name not in self.schemas:
             raise ValueError(f"Table {table_name} does not exist")
@@ -173,10 +173,10 @@ class InMemoryDataStore:
     def get_records(
         self, 
         table_name: str, 
-        where: Optional[Dict[str, Any]] = None,
-        limit: Optional[int] = None,
-        offset: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
+        where: dict[str, Any] | None = None,
+        limit: int | None = None,
+        offset: int | None = None
+    ) -> list[dict[str, Any]]:
         """Get records from a table with optional filtering."""
         if table_name not in self.tables:
             return []
@@ -206,8 +206,8 @@ class InMemoryDataStore:
     def update_records(
         self, 
         table_name: str, 
-        updates: Dict[str, Any],
-        where: Dict[str, Any]
+        updates: dict[str, Any],
+        where: dict[str, Any]
     ) -> int:
         """Update records in a table."""
         if table_name not in self.tables:
@@ -224,7 +224,7 @@ class InMemoryDataStore:
         
         return updated_count
     
-    def delete_records(self, table_name: str, where: Dict[str, Any]) -> int:
+    def delete_records(self, table_name: str, where: dict[str, Any]) -> int:
         """Delete records from a table."""
         if table_name not in self.tables:
             return 0
@@ -259,7 +259,7 @@ class InMemoryDataStore:
     def add_transaction_operation(
         self, 
         tx_id: str, 
-        operation: Dict[str, Any]
+        operation: dict[str, Any]
     ) -> None:
         """Add an operation to a transaction."""
         if tx_id not in self.active_transactions:
@@ -308,7 +308,7 @@ class InMemoryDataStore:
     def _update_text_search_index(
         self, 
         node_id: str, 
-        properties: Dict[str, Any]
+        properties: dict[str, Any]
     ) -> None:
         """Update text search index with node properties."""
         for key, value in properties.items():
@@ -318,7 +318,7 @@ class InMemoryDataStore:
                 for word in words:
                     self.text_search[word].add(node_id)
     
-    def search_text(self, query: str) -> Set[str]:
+    def search_text(self, query: str) -> set[str]:
         """Simple text search across indexed content."""
         query_words = query.lower().split()
         if not query_words:
@@ -346,20 +346,20 @@ class InMemoryDataStore:
     
     # Intent management methods
     
-    def add_intent_mapping(self, mapping: Dict[str, Any]) -> None:
+    def add_intent_mapping(self, mapping: dict[str, Any]) -> None:
         """Add an intent-AST mapping."""
         self.intent_mappings.append(mapping)
     
-    def add_intent_vector(self, vector_data: Dict[str, Any]) -> None:
+    def add_intent_vector(self, vector_data: dict[str, Any]) -> None:
         """Add an intent vector."""
         self.intent_vectors[vector_data["intent_id"]] = vector_data
     
     def get_intent_mappings(
         self,
-        intent_id: Optional[str] = None,
-        ast_node_id: Optional[str] = None,
+        intent_id: str | None = None,
+        ast_node_id: str | None = None,
         min_confidence: float = 0.0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get intent mappings filtered by criteria."""
         results = []
         
@@ -398,16 +398,16 @@ class InMemoryDataStore:
     
     def search_by_vector(
         self,
-        query_vector: List[float],
+        query_vector: list[float],
         limit: int = 10,
         threshold: float = 0.7
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search for similar vectors using cosine similarity."""
         results = []
         
         # Simple cosine similarity calculation
-        def cosine_similarity(v1: List[float], v2: List[float]) -> float:
-            dot_product = sum(a * b for a, b in zip(v1, v2))
+        def cosine_similarity(v1: list[float], v2: list[float]) -> float:
+            dot_product = sum(a * b for a, b in zip(v1, v2, strict=False))
             norm1 = sum(a * a for a in v1) ** 0.5
             norm2 = sum(b * b for b in v2) ** 0.5
             return dot_product / (norm1 * norm2) if norm1 * norm2 > 0 else 0
@@ -451,7 +451,7 @@ class InMemoryDataStore:
     def remove_intent_mapping(
         self,
         intent_id: str,
-        ast_node_id: Optional[str] = None
+        ast_node_id: str | None = None
     ) -> int:
         """Remove intent mappings."""
         removed = 0

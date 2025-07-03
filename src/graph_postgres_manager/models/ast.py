@@ -25,7 +25,7 @@ class ASTNode:
     
     def to_cypher_properties(self) -> dict[str, Any]:
         """Convert to Cypher properties, excluding None values."""
-        props = {
+        props: dict[str, Any] = {
             "id": self.id,
             "node_type": self.node_type,
             "source_id": self.source_id,

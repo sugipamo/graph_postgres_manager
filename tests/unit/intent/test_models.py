@@ -1,8 +1,9 @@
 """Unit tests for intent models."""
 
-import pytest
 from datetime import datetime
 from uuid import uuid4
+
+import pytest
 
 from graph_postgres_manager.intent.models import IntentMapping, IntentVector
 

@@ -1,8 +1,8 @@
 """Integration tests for intent functionality."""
 
 import asyncio
+
 import pytest
-from typing import Any
 
 from graph_postgres_manager.exceptions import ValidationError
 

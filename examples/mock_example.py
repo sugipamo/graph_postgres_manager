@@ -5,7 +5,6 @@ for testing without requiring actual database connections.
 """
 
 import asyncio
-from typing import List, Dict, Any
 
 from graph_postgres_manager.mocks import MockGraphPostgresManager
 
@@ -95,7 +94,7 @@ async def example_ast_graph_storage():
             metadata={"project": "example", "version": "1.0"}
         )
         
-        print(f"Stored graph from main.py:")
+        print("Stored graph from main.py:")
         print(f"  - Nodes created: {result['nodes_created']}")
         print(f"  - Edges created: {result['edges_created']}")
         print(f"  - Status: {result['status']}")
@@ -250,7 +249,7 @@ async def example_performance_testing():
         
         # Check final statistics
         stats = manager.get_mock_stats()
-        print(f"Final statistics:")
+        print("Final statistics:")
         print(f"  - Total nodes: {stats['nodes_count']}")
         print(f"  - Total queries: {stats['query_count']}")
         print(f"  - Average operation time: {stats['avg_operation_time']:.6f}s")

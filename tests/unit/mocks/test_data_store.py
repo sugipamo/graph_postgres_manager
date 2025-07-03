@@ -1,7 +1,8 @@
 """Unit tests for InMemoryDataStore."""
 
-import pytest
 import time
+
+import pytest
 
 from graph_postgres_manager.mocks.data_store import InMemoryDataStore
 

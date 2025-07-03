@@ -1,10 +1,13 @@
 """Index management functionality for PostgreSQL."""
 
+import logging
 from datetime import datetime
 from typing import Any
 
 from graph_postgres_manager.connections.postgres import PostgresConnection
 from graph_postgres_manager.metadata.models import IndexInfo
+
+logger = logging.getLogger(__name__)
 
 
 class IndexManager:
@@ -263,7 +266,7 @@ class IndexManager:
                     
         except Exception:
             # pg_stat_statements might not be available
-            pass
+            logger.debug("pg_stat_statements not available, skipping query analysis")
         
         # Check tables with high sequential scan to index scan ratio
         for table_name, stats in table_stats.items():

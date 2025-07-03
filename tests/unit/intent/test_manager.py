@@ -1,13 +1,13 @@
 """Unit tests for IntentManager."""
 
-import json
 from unittest.mock import AsyncMock, MagicMock, call
+
 import pytest
 
 from graph_postgres_manager.connections.postgres import PostgresConnection
 from graph_postgres_manager.exceptions import (
-    ValidationError,
     DataOperationError,
+    ValidationError,
 )
 from graph_postgres_manager.intent.manager import IntentManager
 

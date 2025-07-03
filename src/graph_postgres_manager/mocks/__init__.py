@@ -5,7 +5,7 @@ components for testing purposes. All mocks are zero-dependency and use only
 Python standard library.
 """
 
-from .manager import MockGraphPostgresManager
 from .data_store import InMemoryDataStore
+from .manager import MockGraphPostgresManager
 
-__all__ = ["MockGraphPostgresManager", "InMemoryDataStore"]
+__all__ = ["InMemoryDataStore", "MockGraphPostgresManager"]

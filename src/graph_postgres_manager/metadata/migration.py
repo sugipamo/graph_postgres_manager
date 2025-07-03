@@ -219,7 +219,7 @@ class MigrationManager:
                 applied.append(migration)
             except SchemaError as e:
                 # Stop on first failure
-                raise SchemaError(f"Migration failed, stopping: {e}")
+                raise SchemaError(f"Migration failed, stopping: {e}") from e
                 
         return applied
     
@@ -267,7 +267,7 @@ class MigrationManager:
             )
             
         except Exception as e:
-            raise SchemaError(f"Rollback failed for {migration_name}: {e}")
+            raise SchemaError(f"Rollback failed for {migration_name}: {e}") from e
     
     async def get_migration_history(self, limit: int | None = None) -> list[dict[str, Any]]:
         """Get migration history.
