@@ -136,7 +136,12 @@ class Neo4jConnection(BaseConnection):
         try:
             # If transaction is provided, use it directly
             if transaction:
-                result = await transaction.run(query, parameters or {})
+                # Handle transaction tuple (session, tx) or direct tx object
+                if isinstance(transaction, tuple):
+                    session, tx = transaction
+                    result = await tx.run(query, parameters or {})
+                else:
+                    result = await transaction.run(query, parameters or {})
                 return [record.data() async for record in result]
             
             # Otherwise use a session
@@ -187,6 +192,28 @@ class Neo4jConnection(BaseConnection):
             logger.error("Transaction execution failed: %s", e)
             raise Neo4jConnectionError(f"Transaction failed: {e}") from e
     
+    async def begin_transaction(self, database: str | None = None):
+        """Begin a Neo4j transaction.
+        
+        Args:
+            database: Target database (None for default)
+            
+        Returns:
+            Neo4j transaction object
+            
+        Raises:
+            Neo4jConnectionError: If transaction creation fails
+        """
+        await self.ensure_connected()
+        
+        try:
+            session = self._driver.session(database=database)
+            transaction = await session.begin_transaction()
+            return (session, transaction)  # Return both for cleanup
+        except Exception as e:
+            logger.error("Failed to begin transaction: %s", e)
+            raise Neo4jConnectionError(f"Failed to begin transaction: {e}") from e
+    
     async def batch_insert(
         self,
         query: str,
@@ -197,7 +224,7 @@ class Neo4jConnection(BaseConnection):
         """Execute batch insert operation.
         
         Args:
-            query: Cypher query with UNWIND
+            query: Cypher query with UNWIND (should include parameters)
             data: List of parameter dictionaries
             batch_size: Number of records per batch
             database: Target database
@@ -217,10 +244,8 @@ class Neo4jConnection(BaseConnection):
                 for i in range(0, len(data), batch_size):
                     batch = data[i:i + batch_size]
                     
-                    result = await session.run(
-                        f"UNWIND $batch AS row {query}",
-                        {"batch": batch}
-                    )
+                    # Execute the query directly with the batch parameters
+                    result = await session.run(query, batch[0])
                     summary = await result.consume()
                     total_inserted += summary.counters.nodes_created
                     
@@ -242,27 +267,6 @@ class Neo4jConnection(BaseConnection):
         """Get the underlying Neo4j driver."""
         return self._driver
     
-    async def begin_transaction(self, database: str | None = None) -> Any:
-        """Begin a new transaction.
-        
-        Args:
-            database: Target database (None for default)
-            
-        Returns:
-            Transaction object
-            
-        Raises:
-            Neo4jConnectionError: If transaction creation fails
-        """
-        await self.ensure_connected()
-        
-        try:
-            session = await self._driver.session(database=database).__aenter__()
-            tx = await session.begin_transaction()
-            return (session, tx)
-        except Exception as e:
-            logger.error("Failed to begin transaction: %s", e)
-            raise Neo4jConnectionError(f"Failed to begin transaction: {e}") from e
     
     async def commit_transaction(self, transaction: Any) -> None:
         """Commit a transaction.

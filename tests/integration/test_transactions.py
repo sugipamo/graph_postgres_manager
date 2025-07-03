@@ -152,7 +152,7 @@ class TestTransactionIntegration:
         assert len(postgres_result) == 0
     
     @pytest.mark.asyncio
-    async def test_concurrent_transactions(self, manager):
+    async def test_concurrent_transactions(self, transaction_manager):
         """Test multiple concurrent transactions."""
         async def create_node_and_record(tx_id: int):
             node_id = f"test-node-concurrent-{tx_id}"
@@ -182,17 +182,18 @@ class TestTransactionIntegration:
         assert len(neo4j_result) == 5
         
         postgres_result = await transaction_manager.execute_postgres_query(
-            "SELECT * FROM transaction_test WHERE node_id LIKE 'test-node-concurrent-%'"
+            "SELECT * FROM transaction_test WHERE node_id LIKE %s",
+            ["test-node-concurrent-%"]
         )
         assert len(postgres_result) == 5
     
     @pytest.mark.asyncio
-    async def test_transaction_timeout(self, manager):
+    async def test_transaction_timeout(self, transaction_manager):
         """Test transaction timeout."""
         node_id = "test-node-timeout"
         
         with pytest.raises(asyncio.TimeoutError):
-            async with manager.transaction(timeout=0.5) as tx:
+            async with transaction_manager.transaction(timeout=0.5) as tx:
                 # Create node in Neo4j
                 await tx.neo4j_execute(
                     "CREATE (n:TransactionTest {id: $id})",
@@ -216,7 +217,7 @@ class TestTransactionIntegration:
         assert len(neo4j_result) == 0
     
     @pytest.mark.asyncio
-    async def test_batch_operations_in_transaction(self, manager):
+    async def test_batch_operations_in_transaction(self, transaction_manager):
         """Test batch operations within a transaction."""
         base_node_id = "test-batch-node"
         batch_size = 10
@@ -250,7 +251,7 @@ class TestTransactionIntegration:
         assert len(postgres_result) == batch_size
     
     @pytest.mark.asyncio
-    async def test_transaction_with_relationships(self, manager):
+    async def test_transaction_with_relationships(self, transaction_manager):
         """Test transaction with Neo4j relationships."""
         user_id = "test-user-1"
         post_id = "test-post-1"
