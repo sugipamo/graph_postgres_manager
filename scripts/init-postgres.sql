@@ -17,7 +17,7 @@ CREATE INDEX IF NOT EXISTS idx_metadata_key ON graph_data.metadata(key);
 
 -- Create a test function for health checks
 CREATE OR REPLACE FUNCTION graph_data.health_check()
-RETURNS TABLE(status TEXT, timestamp TIMESTAMP) AS $$
+RETURNS TABLE(status TEXT, check_time TIMESTAMP) AS $$
 BEGIN
     RETURN QUERY SELECT 'healthy'::TEXT, NOW();
 END;

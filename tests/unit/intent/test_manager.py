@@ -153,6 +153,7 @@ class TestIntentManager:
         assert result[1]["metadata"] is None
     
     @pytest.mark.asyncio
+    @pytest.mark.skip(reason="pgvector is out of scope for this project")
     async def test_search_ast_by_intent_vector(self, intent_manager, mock_postgres_connection):
         """Test vector similarity search."""
         intent_manager._schema_initialized = True

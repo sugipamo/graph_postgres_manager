@@ -48,14 +48,21 @@ test-unit:
 
 test-integration: test-env-up
 	@echo "Running integration tests..."
-	docker-compose run --rm app python3 -m pytest tests/integration/ -v
+	@if [ -f .env.test ]; then export $$(cat .env.test | grep -v '^#' | xargs); fi && \
+	python3 -m pytest tests/integration/ -v
 
 test-all: test-unit test-integration
 
 test: test-env-up
 	@echo "Running all tests..."
-	docker-compose run --rm app python3 -m pytest tests/ -v
+	@if [ -f .env.test ]; then export $$(cat .env.test | grep -v '^#' | xargs); fi && \
+	python3 -m pytest tests/ -v
 	@make test-env-down
+
+test-local:
+	@echo "Running tests locally with .env.test..."
+	@if [ -f .env.test ]; then export $$(cat .env.test | grep -v '^#' | xargs); fi && \
+	python3 -m pytest tests/ -v
 
 # Code quality
 lint:

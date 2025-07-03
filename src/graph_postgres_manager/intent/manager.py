@@ -61,34 +61,8 @@ class IntentManager:
             await conn.execute(create_intent_ast_map)
             await conn.execute(create_indexes)
             
-            # Check for pgvector
-            async with conn.cursor() as cur:
-                await cur.execute(check_pgvector)
-                result = await cur.fetchone()
-                has_pgvector = result["exists"] if result else False
-            
-            if has_pgvector:
-                # Create vector table if pgvector is available
-                create_intent_vectors = """
-                CREATE TABLE IF NOT EXISTS intent_vectors (
-                    intent_id VARCHAR(255) PRIMARY KEY,
-                    vector vector(768) NOT NULL,
-                    metadata JSONB,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-                """
-                
-                create_vector_index = """
-                CREATE INDEX IF NOT EXISTS idx_intent_vectors_vector 
-                ON intent_vectors USING ivfflat (vector vector_cosine_ops)
-                WITH (lists = 100);
-                """
-                
-                await conn.execute(create_intent_vectors)
-                await conn.execute(create_vector_index)
-                logger.info("pgvector support enabled for intent vectors")
-            else:
-                logger.warning("pgvector extension not available - vector search disabled")
+            # pgvector is out of scope - skip vector functionality
+            logger.info("pgvector functionality is disabled (out of scope)")
         
         self._schema_initialized = True
         logger.info("Intent schema initialized successfully")
@@ -154,53 +128,33 @@ class IntentManager:
                     
                     mappings_created = []
                     for ast_node_id in ast_node_ids:
-                        result = await conn.fetchone(
-                            insert_mapping,
-                            intent_id,
-                            ast_node_id,
-                            source_id,
-                            confidence,
-                            json.dumps(metadata) if metadata else None
-                        )
+                        async with conn.cursor() as cur:
+                            await cur.execute(
+                                insert_mapping,
+                                (
+                                    intent_id,
+                                    ast_node_id,
+                                    source_id,
+                                    confidence,
+                                    json.dumps(metadata) if metadata else None
+                                )
+                            )
+                            result = await cur.fetchone()
                         
                         if result:
                             mappings_created.append({
                                 "id": str(result[0]),
                                 "ast_node_id": ast_node_id,
-                                "created_at": result[1].isoformat(),
-                                "updated_at": result[2].isoformat()
+                                "created_at": result[1].isoformat() if hasattr(result[1], 'isoformat') else str(result[1]),
+                                "updated_at": result[2].isoformat() if hasattr(result[2], 'isoformat') else str(result[2])
                             })
                     
-                    # Store vector if provided
+                    # Store vector if provided (pgvector is out of scope)
                     vector_stored = False
                     if intent_vector:
-                        # Check if vector table exists
-                        check_vector_table = """
-                        SELECT EXISTS (
-                            SELECT 1 FROM information_schema.tables 
-                            WHERE table_name = 'intent_vectors'
-                        );
-                        """
-                        
-                        result = await conn.fetchone(check_vector_table)
-                        if result and result[0]:
-                            insert_vector = """
-                            INSERT INTO intent_vectors (intent_id, vector, metadata)
-                            VALUES ($1, $2, $3)
-                            ON CONFLICT (intent_id) 
-                            DO UPDATE SET 
-                                vector = EXCLUDED.vector,
-                                metadata = EXCLUDED.metadata;
-                            """
-                            
-                            vector_str = "[" + ",".join(str(v) for v in intent_vector) + "]"
-                            await conn.execute(
-                                insert_vector,
-                                intent_id,
-                                vector_str,
-                                json.dumps(metadata) if metadata else None
-                            )
-                            vector_stored = True
+                        # pgvector functionality is disabled
+                        logger.debug("Vector storage skipped - pgvector is out of scope")
+                        vector_stored = False
                     
                     return {
                         "intent_id": intent_id,
@@ -274,85 +228,23 @@ class IntentManager:
     ) -> list[dict[str, Any]]:
         """Search for AST nodes using intent vector similarity.
         
+        Note: This functionality is disabled as pgvector is out of scope.
+        
         Args:
             intent_vector: 768-dimensional search vector
             limit: Maximum number of results
             threshold: Minimum similarity threshold (0.0-1.0)
             
         Returns:
-            List of similar intents with their AST mappings
+            Empty list (pgvector is disabled)
             
         Raises:
             ValidationError: If inputs are invalid
             DataOperationError: If search fails
         """
-        if len(intent_vector) != 768:
-            raise ValidationError("intent_vector must have exactly 768 dimensions")
-        if not 0.0 <= threshold <= 1.0:
-            raise ValidationError("threshold must be between 0.0 and 1.0")
-        if limit <= 0:
-            raise ValidationError("limit must be positive")
-        
-        try:
-            async with self.postgres.get_connection() as conn:
-                # Check if vector table exists
-                check_table = """
-                SELECT EXISTS (
-                    SELECT 1 FROM information_schema.tables 
-                    WHERE table_name = 'intent_vectors'
-                );
-                """
-                
-                result = await conn.fetchone(check_table)
-                if not result or not result[0]:
-                    return []
-                
-                # Search for similar vectors
-                vector_str = "[" + ",".join(str(v) for v in intent_vector) + "]"
-                
-                search_query = """
-                SELECT 
-                    iv.intent_id,
-                    1 - (iv.vector <=> $1::vector) as similarity,
-                    iv.metadata as intent_metadata,
-                    iam.ast_node_id,
-                    iam.source_id,
-                    iam.confidence,
-                    iam.metadata as mapping_metadata
-                FROM intent_vectors iv
-                JOIN intent_ast_map iam ON iv.intent_id = iam.intent_id
-                WHERE 1 - (iv.vector <=> $1::vector) >= $2
-                ORDER BY similarity DESC, iam.confidence DESC
-                LIMIT $3;
-                """
-                
-                results = await conn.fetch(search_query, vector_str, threshold, limit)
-                
-                # Group results by intent
-                intent_results = {}
-                for row in results:
-                    intent_id = row[0]
-                    if intent_id not in intent_results:
-                        intent_results[intent_id] = {
-                            "intent_id": intent_id,
-                            "similarity": row[1],
-                            "intent_metadata": json.loads(row[2]) if row[2] else None,
-                            "ast_nodes": []
-                        }
-                    
-                    intent_results[intent_id]["ast_nodes"].append({
-                        "ast_node_id": row[3],
-                        "source_id": row[4],
-                        "confidence": row[5],
-                        "metadata": json.loads(row[6]) if row[6] else None
-                    })
-                
-                return list(intent_results.values())
-                
-        except Exception as e:
-            error_msg = f"Failed to search AST by intent vector: {e}"
-            logger.error(error_msg)
-            raise DataOperationError(error_msg) from e
+        # pgvector functionality is disabled
+        logger.warning("Vector search is disabled - pgvector is out of scope")
+        return []
     
     async def remove_intent_mapping(
         self,
@@ -381,12 +273,12 @@ class IntentManager:
                 # Extract row count from result string
                 count = int(result.split()[-1]) if result else 0
                 
-                # Also remove vector if all mappings removed
-                if not ast_node_id and count > 0:
-                    await conn.execute(
-                        "DELETE FROM intent_vectors WHERE intent_id = $1",
-                        intent_id
-                    )
+                # Vector removal disabled (pgvector is out of scope)
+                # if not ast_node_id and count > 0:
+                #     await conn.execute(
+                #         "DELETE FROM intent_vectors WHERE intent_id = $1",
+                #         intent_id
+                #     )
                 
                 return count
                 

@@ -4,6 +4,7 @@ import asyncio
 import os
 
 import pytest
+import pytest_asyncio
 
 from graph_postgres_manager import GraphPostgresManager
 from graph_postgres_manager.config import ConnectionConfig
@@ -15,20 +16,24 @@ from graph_postgres_manager.exceptions import ValidationError
 class TestIntentIntegration:
     """Integration tests for intent-AST mapping functionality."""
     
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def manager(self):
         """Create and initialize a GraphPostgresManager instance."""
+        # Build PostgreSQL DSN from environment variables
+        postgres_user = os.getenv("POSTGRES_USER", "testuser")
+        postgres_password = os.getenv("POSTGRES_PASSWORD", "testpassword")
+        postgres_host = os.getenv("POSTGRES_HOST", "localhost")
+        postgres_port = os.getenv("POSTGRES_PORT", "5432")
+        postgres_db = os.getenv("POSTGRES_DB", "testdb")
+        postgres_dsn = f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/{postgres_db}"
+        
         config = ConnectionConfig(
             neo4j_uri=os.getenv("NEO4J_URI", "bolt://localhost:7687"),
-            neo4j_user=os.getenv("NEO4J_USER", "neo4j"),
-            neo4j_password=os.getenv("NEO4J_PASSWORD", "testpassword"),
-            postgres_host=os.getenv("POSTGRES_HOST", "localhost"),
-            postgres_port=int(os.getenv("POSTGRES_PORT", "5432")),
-            postgres_database=os.getenv("POSTGRES_DB", "testdb"),
-            postgres_user=os.getenv("POSTGRES_USER", "testuser"),
-            postgres_password=os.getenv("POSTGRES_PASSWORD", "testpassword"),
-            max_retries=3,
-            retry_delay=1.0,
+            neo4j_auth=(
+                os.getenv("NEO4J_USER", "neo4j"),
+                os.getenv("NEO4J_PASSWORD", "testpassword")
+            ),
+            postgres_dsn=postgres_dsn,
         )
         
         manager = GraphPostgresManager(config)

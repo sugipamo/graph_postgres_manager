@@ -63,25 +63,27 @@ class TestDataOperations:
         """
         result = await manager.neo4j_connection.execute_query(create_query)
         assert len(result) == 1
-        assert result[0]["r"]["since"] == 2020
+        # リレーションシップはタプル形式で返される
+        assert result[0]["a"]["name"] == "Alice"
+        assert result[0]["b"]["name"] == "Bob"
         
         # Read relationship
         read_query = """
         MATCH (a:Person {name: 'Alice'})-[r:KNOWS]->(b:Person {name: 'Bob'})
-        RETURN r
+        RETURN r.since as since
         """
         result = await manager.neo4j_connection.execute_query(read_query)
         assert len(result) == 1
-        assert result[0]["r"]["since"] == 2020
+        assert result[0]["since"] == 2020
         
         # Update relationship
         update_query = """
         MATCH (a:Person {name: 'Alice'})-[r:KNOWS]->(b:Person {name: 'Bob'})
         SET r.status = 'close_friends'
-        RETURN r
+        RETURN r.status as status
         """
         result = await manager.neo4j_connection.execute_query(update_query)
-        assert result[0]["r"]["status"] == "close_friends"
+        assert result[0]["status"] == "close_friends"
         
         # Delete relationship
         delete_query = """

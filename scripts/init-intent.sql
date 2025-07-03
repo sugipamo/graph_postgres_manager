@@ -1,7 +1,7 @@
 -- Intent management tables for graph_postgres_manager
 
--- Enable pgvector extension if available
-CREATE EXTENSION IF NOT EXISTS vector;
+-- pgvector extension is out of scope for this project
+-- Vector search functionality is disabled
 
 -- Create intent_ast_map table
 CREATE TABLE IF NOT EXISTS intent_ast_map (
@@ -23,22 +23,6 @@ CREATE INDEX IF NOT EXISTS idx_intent_ast_source_id ON intent_ast_map(source_id)
 CREATE INDEX IF NOT EXISTS idx_intent_ast_confidence ON intent_ast_map(confidence DESC);
 CREATE INDEX IF NOT EXISTS idx_intent_ast_metadata ON intent_ast_map USING gin(metadata);
 
--- Create intent_vectors table (requires pgvector)
-CREATE TABLE IF NOT EXISTS intent_vectors (
-    intent_id VARCHAR(255) PRIMARY KEY,
-    vector vector(768) NOT NULL,
-    metadata JSONB,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create vector index for similarity search
-CREATE INDEX IF NOT EXISTS idx_intent_vectors_vector 
-ON intent_vectors USING ivfflat (vector vector_cosine_ops)
-WITH (lists = 100);
-
--- Create metadata index
-CREATE INDEX IF NOT EXISTS idx_intent_vectors_metadata ON intent_vectors USING gin(metadata);
-
 -- Create update timestamp trigger
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -55,4 +39,3 @@ EXECUTE FUNCTION update_updated_at_column();
 
 -- Grant permissions (adjust user as needed)
 GRANT ALL PRIVILEGES ON TABLE intent_ast_map TO testuser;
-GRANT ALL PRIVILEGES ON TABLE intent_vectors TO testuser;

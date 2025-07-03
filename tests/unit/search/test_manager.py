@@ -81,6 +81,7 @@ class TestSearchManager:
         assert results[0].line_number == 10
     
     @pytest.mark.asyncio
+    @pytest.mark.skip(reason="pgvector is out of scope for this project")
     async def test_vector_search(self, search_manager, mock_intent_manager):
         """Test vector search functionality."""
         # Mock intent manager response

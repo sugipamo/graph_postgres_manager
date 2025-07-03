@@ -86,6 +86,7 @@ class TestSearchIntegration:
         assert all(r.node_type == "FunctionDef" for r in results)
     
     @pytest.mark.asyncio
+    @pytest.mark.skip(reason="pgvector is out of scope for this project")
     async def test_vector_search_with_intent(self, manager, prepared_data):
         """Test vector similarity search."""
         # Search with a vector similar to sum_intent
