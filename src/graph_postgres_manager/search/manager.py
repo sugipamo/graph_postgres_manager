@@ -96,10 +96,10 @@ class SearchManager:
             
             return [
                 SearchResult(
-                    id=str(r["id"]),
-                    source_id=r.get("source_id", ""),
+                    id=str(r.get("id", "")),
+                    source_id=str(r.get("source_id", "")),
                     node_type=r.get("node_type"),
-                    content=r.get("value", ""),
+                    content=str(r.get("value", "")),
                     score=self._calculate_graph_score(r, query),
                     search_type=SearchType.GRAPH,
                     metadata={},
@@ -117,10 +117,12 @@ class SearchManager:
         """Search PostgreSQL full-text index."""
         try:
             sql = self._build_text_query(query)
-            params = [query.query]
             
-            async with self.postgres.get_connection() as conn:
-                rows = await conn.fetch(sql, *params)
+            # Use execute_query instead of raw connection
+            rows = await self.postgres.execute_query(
+                sql,
+                {"search_term": query.query}
+            )
                 
             return [
                 SearchResult(
@@ -171,9 +173,9 @@ class SearchManager:
         # Basic full-text search query
         sql = """
         SELECT id, source_id, content, metadata,
-               ts_rank(to_tsvector('english', content), plainto_tsquery('english', $1)) as rank
+               ts_rank(to_tsvector('english', content), plainto_tsquery('english', %(search_term)s)) as rank
         FROM graph_data.search_index
-        WHERE to_tsvector('english', content) @@ plainto_tsquery('english', $1)
+        WHERE to_tsvector('english', content) @@ plainto_tsquery('english', %(search_term)s)
         """
         
         conditions = []
@@ -223,15 +225,19 @@ class SearchManager:
         score = 0.0
         query_lower = query.query.lower()
         
+        # Get values with proper None handling
+        id_value = str(result.get("id", ""))
+        value_content = str(result.get("value", ""))
+        
         # Exact match on ID or value
-        if result.get("id", "").lower() == query_lower:
+        if id_value.lower() == query_lower:
             score = 1.0
-        elif result.get("value", "").lower() == query_lower:
+        elif value_content.lower() == query_lower:
             score = 0.9
         # Partial match
-        elif query_lower in result.get("value", "").lower():
+        elif query_lower in value_content.lower():
             score = 0.7
-        elif query_lower in result.get("id", "").lower():
+        elif query_lower in id_value.lower():
             score = 0.6
         else:
             score = 0.4

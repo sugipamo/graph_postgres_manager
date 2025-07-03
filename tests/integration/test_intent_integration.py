@@ -224,7 +224,7 @@ class TestIntentIntegration:
         )
         
         # Should find the node through graph search
-        assert any(r.node_id == "search_ast_1" for r in results)
+        assert any(r.id == "search_ast_1" for r in results)
     
     @pytest.mark.asyncio
     async def test_concurrent_intent_operations(self, manager, clean_databases):

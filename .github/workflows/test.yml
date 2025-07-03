@@ -114,6 +114,7 @@ jobs:
         POSTGRES_USER: testuser
         POSTGRES_PASSWORD: testpassword
         POSTGRES_DB: testdb
+        POSTGRES_DSN: postgresql://testuser:testpassword@localhost:5432/testdb
       run: |
         pytest tests/integration/ -v --cov=src --cov-report=xml
     
