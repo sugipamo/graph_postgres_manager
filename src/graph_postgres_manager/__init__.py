@@ -14,7 +14,6 @@ from graph_postgres_manager.exceptions import (
     RetryExhaustedError,
     ValidationError,
 )
-from graph_postgres_manager.intent import IntentManager, IntentMapping, IntentVector
 from graph_postgres_manager.manager import GraphPostgresManager
 from graph_postgres_manager.models import ConnectionState, HealthStatus
 from graph_postgres_manager.search import (
@@ -37,9 +36,6 @@ __all__ = [
     "GraphPostgresManagerException",
     "HealthCheckError",
     "HealthStatus",
-    "IntentManager",
-    "IntentMapping",
-    "IntentVector",
     "Neo4jConnectionError",
     "OperationTimeoutError",
     "PoolExhaustedError",

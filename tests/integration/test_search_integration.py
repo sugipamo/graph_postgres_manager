@@ -28,29 +28,11 @@ class TestSearchIntegration:
         
         await manager.store_ast_graph(ast_graph, "test_file.py")
         
-        # Link intents
-        await manager.link_intent_to_ast(
-            intent_id="sum_intent",
-            ast_node_ids=["func1"],
-            source_id="test_file.py",
-            confidence=0.95,
-            intent_vector=[0.1] * 768
-        )
-        
-        await manager.link_intent_to_ast(
-            intent_id="math_intent",
-            ast_node_ids=["func1", "func2", "class1"],
-            source_id="test_file.py",
-            confidence=0.85,
-            intent_vector=[0.2] * 768
-        )
         
         yield
         
         # Cleanup
         await manager.neo4j.execute_query("MATCH (n:ASTNode) WHERE n.source_id = 'test_file.py' DETACH DELETE n")
-        await manager.remove_intent_mapping("sum_intent")
-        await manager.remove_intent_mapping("math_intent")
     
     @pytest.mark.asyncio
     async def test_search_by_function_name(self, manager, prepared_data):
@@ -58,7 +40,6 @@ class TestSearchIntegration:
         results = await manager.search_unified(
             query="calculate",
             include_graph=True,
-            include_vector=False,
             include_text=False,
             max_results=10
         )
@@ -77,7 +58,6 @@ class TestSearchIntegration:
             query="",  # Empty query should still work with filters
             filters={"node_types": ["FunctionDef"]},
             include_graph=True,
-            include_vector=False,
             include_text=False,
             max_results=10
         )
@@ -85,36 +65,13 @@ class TestSearchIntegration:
         assert len(results) == 2
         assert all(r.node_type == "FunctionDef" for r in results)
     
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="pgvector is out of scope for this project")
-    async def test_vector_search_with_intent(self, manager, prepared_data):
-        """Test vector similarity search."""
-        # Search with a vector similar to sum_intent
-        search_vector = [0.11] * 768  # Slightly different from [0.1] * 768
-        
-        results = await manager.search_unified(
-            query="sum",
-            vector=search_vector,
-            include_graph=False,
-            include_vector=True,
-            include_text=False,
-            max_results=5
-        )
-        
-        # Should find results through intent vectors
-        assert len(results) > 0
-        assert results[0].search_type == SearchType.VECTOR
     
     @pytest.mark.asyncio
     async def test_unified_search_all_types(self, manager, prepared_data):
         """Test unified search across all search types."""
-        search_vector = [0.15] * 768
-        
         results = await manager.search_unified(
             query="calculate",
-            vector=search_vector,
             include_graph=True,
-            include_vector=True,
             include_text=True,
             max_results=20
         )
@@ -153,7 +110,6 @@ class TestSearchIntegration:
         results = await manager.search_unified(
             query="calculate_sum",  # Exact match should score higher
             include_graph=True,
-            include_vector=False,
             include_text=False,
             max_results=10
         )
@@ -174,7 +130,6 @@ class TestSearchIntegration:
         results = await manager.search_unified(
             query="nonexistent_function_name_xyz",
             include_graph=True,
-            include_vector=False,
             include_text=False,
             max_results=10
         )

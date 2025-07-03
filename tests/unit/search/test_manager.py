@@ -31,20 +31,13 @@ class TestSearchManager:
         mock.get_connection = MagicMock()
         return mock
     
-    @pytest.fixture
-    def mock_intent_manager(self):
-        """Create a mock IntentManager."""
-        mock = MagicMock()
-        mock.search_ast_by_intent_vector = AsyncMock()
-        return mock
     
     @pytest.fixture
-    def search_manager(self, mock_neo4j_connection, mock_postgres_connection, mock_intent_manager):
+    def search_manager(self, mock_neo4j_connection, mock_postgres_connection):
         """Create a SearchManager instance with mocked dependencies."""
         return SearchManager(
             neo4j_connection=mock_neo4j_connection,
-            postgres_connection=mock_postgres_connection,
-            intent_manager=mock_intent_manager
+            postgres_connection=mock_postgres_connection
         )
     
     @pytest.mark.asyncio
@@ -80,37 +73,6 @@ class TestSearchManager:
         assert results[0].file_path == "/test/file.py"
         assert results[0].line_number == 10
     
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="pgvector is out of scope for this project")
-    async def test_vector_search(self, search_manager, mock_intent_manager):
-        """Test vector search functionality."""
-        # Mock intent manager response
-        mock_intent_manager.search_ast_by_intent_vector.return_value = [
-            {
-                "mapping_id": "map1",
-                "source_id": "source1",
-                "ast_node_id": "node1",
-                "similarity": 0.95,
-                "metadata": {"key": "value"}
-            }
-        ]
-        
-        vector = [0.1] * 768
-        query = SearchQuery(
-            query="test",
-            vector=vector,
-            search_types=[SearchType.VECTOR],
-            filters=SearchFilter(min_confidence=0.8)
-        )
-        
-        results = await search_manager.search(query)
-        
-        assert len(results) == 1
-        assert results[0].id == "map1"
-        assert results[0].source_id == "source1"
-        assert results[0].score == 0.95
-        assert results[0].search_type == SearchType.VECTOR
-        assert results[0].metadata == {"key": "value"}
     
     @pytest.mark.asyncio
     async def test_text_search(self, search_manager, mock_postgres_connection):
@@ -148,8 +110,8 @@ class TestSearchManager:
         assert results[0].metadata == {"type": "doc"}
     
     @pytest.mark.asyncio
-    async def test_unified_search(self, search_manager, mock_neo4j_connection, mock_postgres_connection, mock_intent_manager):
-        """Test unified search across all types."""
+    async def test_unified_search(self, search_manager, mock_neo4j_connection, mock_postgres_connection):
+        """Test unified search across graph and text types."""
         # Mock Neo4j response
         mock_neo4j_connection.execute_query.return_value = [
             {"id": "graph1", "source_id": "source1", "value": "test", "node_type": "Function"}
@@ -167,20 +129,14 @@ class TestSearchManager:
         
         mock_postgres_connection.get_connection = MagicMock(return_value=mock_context)
         
-        # Mock intent manager response
-        mock_intent_manager.search_ast_by_intent_vector.return_value = [
-            {"mapping_id": "vec1", "source_id": "source1", "ast_node_id": "node1", "similarity": 0.9}
-        ]
-        
         query = SearchQuery(
             query="test",
-            vector=[0.1] * 768,
             search_types=[SearchType.UNIFIED]
         )
         
         results = await search_manager.search(query)
         
-        # Should have results from all three sources
+        # Should have results from graph and text sources
         assert len(results) >= 2  # At least graph and text results
         
         # Results should be ranked by score
@@ -209,7 +165,7 @@ class TestSearchManager:
         results = [
             SearchResult(id="1", source_id="s1", score=0.5, search_type=SearchType.GRAPH),
             SearchResult(id="2", source_id="s1", score=0.8, search_type=SearchType.TEXT),
-            SearchResult(id="1", source_id="s1", score=0.6, search_type=SearchType.VECTOR),  # Duplicate
+            SearchResult(id="1", source_id="s1", score=0.6, search_type=SearchType.TEXT),  # Duplicate
             SearchResult(id="3", source_id="s1", score=0.7, search_type=SearchType.GRAPH),
         ]
         

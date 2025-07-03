@@ -78,8 +78,6 @@ async def clean_postgres(manager: GraphPostgresManager) -> AsyncGenerator[None, 
     # テスト前のクリーンアップ（前回の実行データを削除）
     try:
         await manager.postgres.execute_query("DELETE FROM graph_data.metadata WHERE key LIKE 'test_key_%%'")
-        await manager.postgres.execute_query("DELETE FROM intent_ast_map WHERE ast_node_id LIKE 'test_%%'")
-        await manager.postgres.execute_query("DELETE FROM intent_vectors WHERE intent_id LIKE 'test_%%'")
     except Exception:
         # テーブルが存在しない場合は無視
         pass
@@ -89,8 +87,6 @@ async def clean_postgres(manager: GraphPostgresManager) -> AsyncGenerator[None, 
     # テスト後のクリーンアップ
     try:
         await manager.postgres.execute_query("TRUNCATE TABLE graph_data.metadata CASCADE")
-        await manager.postgres.execute_query("TRUNCATE TABLE intent_ast_map CASCADE")
-        await manager.postgres.execute_query("TRUNCATE TABLE intent_vectors CASCADE")
     except Exception:
         # テーブルが存在しない場合は無視
         pass

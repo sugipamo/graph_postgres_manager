@@ -14,7 +14,6 @@ from graph_postgres_manager.exceptions import (
     GraphPostgresManagerException,
     ValidationError,
 )
-from graph_postgres_manager.intent import IntentManager
 from graph_postgres_manager.metadata import IndexManager, SchemaManager, StatsCollector
 from graph_postgres_manager.models import EdgeType, HealthStatus
 from graph_postgres_manager.search import (
@@ -47,7 +46,6 @@ class GraphPostgresManager:
         self._schema_manager: SchemaManager | None = None
         self._index_manager: IndexManager | None = None
         self._stats_collector: StatsCollector | None = None
-        self._intent_manager: IntentManager | None = None
         self._search_manager: SearchManager | None = None
         
         # For test compatibility
@@ -96,20 +94,16 @@ class GraphPostgresManager:
         self._schema_manager = SchemaManager(self.postgres)
         self._index_manager = IndexManager(self.postgres)
         self._stats_collector = StatsCollector(self.postgres)
-        self._intent_manager = IntentManager(self.postgres)
         
         # Initialize search manager
         self._search_manager = SearchManager(
             neo4j_connection=self.neo4j,
-            postgres_connection=self.postgres,
-            intent_manager=self._intent_manager
+            postgres_connection=self.postgres
         )
         
         # Initialize metadata schema
         await self._schema_manager.initialize_metadata_schema()
         
-        # Initialize intent schema
-        await self._intent_manager.initialize_schema()
         
         self._is_initialized = True
         logger.info("GraphPostgresManager initialized successfully")
@@ -373,19 +367,6 @@ class GraphPostgresManager:
             raise GraphPostgresManagerException("Manager not initialized")
         return self._stats_collector
     
-    @property
-    def intent_manager(self) -> IntentManager:
-        """Get the intent manager instance.
-        
-        Returns:
-            IntentManager instance
-            
-        Raises:
-            GraphPostgresManagerException: If manager not initialized
-        """
-        if not self._is_initialized or not self._intent_manager:
-            raise GraphPostgresManagerException("Manager not initialized")
-        return self._intent_manager
     
     @property
     def search_manager(self) -> SearchManager:
@@ -678,130 +659,6 @@ class GraphPostgresManager:
             with contextlib.suppress(Exception):
                 await self._neo4j_conn.execute_query(query)
     
-    # Intent Management
-    
-    async def link_intent_to_ast(
-        self,
-        intent_id: str,
-        ast_node_ids: list[str],
-        source_id: str,
-        confidence: float = 1.0,
-        metadata: dict[str, Any] | None = None,
-        intent_vector: list[float] | None = None
-    ) -> dict[str, Any]:
-        """Link an intent to one or more AST nodes.
-        
-        This method creates mappings between intents and AST nodes, allowing
-        for bidirectional search and relationship tracking.
-        
-        Args:
-            intent_id: Unique identifier for the intent
-            ast_node_ids: List of AST node IDs to link to the intent
-            source_id: Source code identifier
-            confidence: Confidence level of the mapping (0.0-1.0)
-            metadata: Additional metadata for the mapping
-            intent_vector: Optional 768-dimensional vector representation
-            
-        Returns:
-            Dictionary with mapping creation results
-            
-        Raises:
-            GraphPostgresManagerException: If manager not initialized
-            ValidationError: If input validation fails
-            DataOperationError: If the operation fails
-        """
-        if not self._is_initialized:
-            raise GraphPostgresManagerException("Manager not initialized")
-        
-        return await self.intent_manager.link_intent_to_ast(
-            intent_id=intent_id,
-            ast_node_ids=ast_node_ids,
-            source_id=source_id,
-            confidence=confidence,
-            metadata=metadata,
-            intent_vector=intent_vector
-        )
-    
-    async def get_ast_nodes_by_intent(
-        self,
-        intent_id: str,
-        source_id: str | None = None
-    ) -> list[dict[str, Any]]:
-        """Get all AST nodes linked to a specific intent.
-        
-        Args:
-            intent_id: Intent identifier
-            source_id: Optional source filter
-            
-        Returns:
-            List of AST node mappings
-            
-        Raises:
-            GraphPostgresManagerException: If manager not initialized
-        """
-        if not self._is_initialized:
-            raise GraphPostgresManagerException("Manager not initialized")
-        
-        return await self.intent_manager.get_ast_nodes_by_intent(
-            intent_id=intent_id,
-            source_id=source_id
-        )
-    
-    async def search_ast_by_intent_vector(
-        self,
-        intent_vector: list[float],
-        limit: int = 10,
-        threshold: float = 0.7
-    ) -> list[dict[str, Any]]:
-        """Search for AST nodes using intent vector similarity.
-        
-        Uses pgvector to find similar intents and their associated AST nodes.
-        
-        Args:
-            intent_vector: 768-dimensional search vector
-            limit: Maximum number of results
-            threshold: Minimum similarity threshold (0.0-1.0)
-            
-        Returns:
-            List of similar intents with their AST mappings
-            
-        Raises:
-            GraphPostgresManagerException: If manager not initialized
-            ValidationError: If inputs are invalid
-        """
-        if not self._is_initialized:
-            raise GraphPostgresManagerException("Manager not initialized")
-        
-        return await self.intent_manager.search_ast_by_intent_vector(
-            intent_vector=intent_vector,
-            limit=limit,
-            threshold=threshold
-        )
-    
-    async def remove_intent_mapping(
-        self,
-        intent_id: str,
-        ast_node_id: str | None = None
-    ) -> int:
-        """Remove intent-AST mappings.
-        
-        Args:
-            intent_id: Intent identifier
-            ast_node_id: Optional specific AST node to unlink
-            
-        Returns:
-            Number of mappings removed
-            
-        Raises:
-            GraphPostgresManagerException: If manager not initialized
-        """
-        if not self._is_initialized:
-            raise GraphPostgresManagerException("Manager not initialized")
-        
-        return await self.intent_manager.remove_intent_mapping(
-            intent_id=intent_id,
-            ast_node_id=ast_node_id
-        )
     
     # Unified Search
     
@@ -809,23 +666,19 @@ class GraphPostgresManager:
         self,
         query: str | SearchQuery,
         include_graph: bool = True,
-        include_vector: bool = True,
         include_text: bool = True,
-        vector: list[float] | None = None,
         filters: dict[str, Any] | None = None,
         max_results: int = 100
     ) -> list[SearchResult]:
-        """Perform unified search across all data sources.
+        """Perform unified search across graph and text data sources.
         
-        This method integrates graph search (Neo4j), vector search (pgvector),
-        and full-text search (PostgreSQL) to provide comprehensive search results.
+        This method integrates graph search (Neo4j) and full-text search (PostgreSQL)
+        to provide comprehensive search results.
         
         Args:
             query: Search query string or SearchQuery object
             include_graph: Include Neo4j graph search
-            include_vector: Include vector similarity search
             include_text: Include PostgreSQL full-text search
-            vector: Optional 768-dimensional search vector
             filters: Optional filters (node_types, source_ids, etc.)
             max_results: Maximum number of results to return
             
@@ -845,13 +698,11 @@ class GraphPostgresManager:
             
             # Determine search types based on parameters
             search_types = []
-            if include_graph and include_vector and include_text:
+            if include_graph and include_text:
                 search_types = [SearchType.UNIFIED]
             else:
                 if include_graph:
                     search_types.append(SearchType.GRAPH)
-                if include_vector and vector:
-                    search_types.append(SearchType.VECTOR)
                 if include_text:
                     search_types.append(SearchType.TEXT)
             
@@ -870,8 +721,7 @@ class GraphPostgresManager:
             query_obj = SearchQuery(
                 query=query,
                 search_types=search_types,
-                filters=filter_obj,
-                vector=vector
+                filters=filter_obj
             )
         else:
             query_obj = query

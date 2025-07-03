@@ -9,7 +9,6 @@ from typing import Any
 from graph_postgres_manager.connections.neo4j import Neo4jConnection
 from graph_postgres_manager.connections.postgres import PostgresConnection
 from graph_postgres_manager.exceptions import DataOperationError
-from graph_postgres_manager.intent.manager import IntentManager
 from graph_postgres_manager.search.models import SearchQuery, SearchResult, SearchType
 
 logger = logging.getLogger(__name__)
@@ -21,12 +20,10 @@ class SearchManager:
     def __init__(
         self,
         neo4j_connection: Neo4jConnection,
-        postgres_connection: PostgresConnection,
-        intent_manager: IntentManager
+        postgres_connection: PostgresConnection
     ):
         self.neo4j = neo4j_connection
         self.postgres = postgres_connection
-        self.intent_manager = intent_manager
         self._search_cache: dict[str, list[SearchResult]] = {}
         self._cache_ttl = 300  # 5 minutes
         
@@ -46,8 +43,6 @@ class SearchManager:
         tasks = []
         if SearchType.GRAPH in query.search_types:
             tasks.append(self._graph_search(query))
-        if SearchType.VECTOR in query.search_types:
-            tasks.append(self._vector_search(query))
         if SearchType.TEXT in query.search_types:
             tasks.append(self._text_search(query))
         
@@ -71,22 +66,16 @@ class SearchManager:
         """Execute unified search across all types."""
         # Execute all search types in parallel
         graph_task = self._graph_search(query)
-        vector_task = self._vector_search(query) if query.vector else None
         text_task = self._text_search(query)
         
         tasks = [graph_task, text_task]
-        if vector_task:
-            tasks.append(vector_task)
             
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
         # Process results
         graph_results = results[0] if not isinstance(results[0], Exception) else []
         text_results = results[1] if not isinstance(results[1], Exception) else []
-        vector_results = (
-            results[2] if len(results) > 2 and not isinstance(results[2], Exception) 
-            else []
-        )
+        vector_results = []
         
         # Combine and rank
         all_results = []
@@ -123,34 +112,6 @@ class SearchManager:
             logger.error("Graph search error: %s", e)
             raise DataOperationError(f"Graph search failed: {e}") from e
     
-    async def _vector_search(self, query: SearchQuery) -> list[SearchResult]:
-        """Search using vector embeddings."""
-        if not query.vector:
-            return []
-            
-        try:
-            # Use intent manager for vector search
-            results = await self.intent_manager.search_ast_by_intent_vector(
-                query.vector,
-                source_id=query.filters.source_ids[0] if query.filters.source_ids else None,
-                similarity_threshold=query.filters.min_confidence,
-                limit=query.filters.max_results
-            )
-            
-            return [
-                SearchResult(
-                    id=r["mapping_id"],
-                    source_id=r["source_id"],
-                    content=f"AST Node: {r['ast_node_id']}",
-                    score=r["similarity"],
-                    search_type=SearchType.VECTOR,
-                    metadata=r.get("metadata", {})
-                )
-                for r in results
-            ]
-        except Exception as e:
-            logger.error("Vector search error: %s", e)
-            raise DataOperationError(f"Vector search failed: {e}") from e
     
     async def _text_search(self, query: SearchQuery) -> list[SearchResult]:
         """Search PostgreSQL full-text index."""
