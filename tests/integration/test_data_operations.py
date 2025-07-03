@@ -156,9 +156,14 @@ class TestDataOperations:
         ]
         
         # バッチインサート
+        query = """
+        UNWIND $nodes AS node
+        CREATE (p:Person {name: node.name, age: node.age, id: node.id})
+        RETURN COUNT(p) AS created
+        """
         result = await manager.batch_insert_neo4j(
-            label="Person",
-            properties_list=nodes,
+            query=query,
+            data=[{"nodes": nodes}],
             batch_size=20
         )
         

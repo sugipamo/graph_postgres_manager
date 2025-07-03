@@ -114,7 +114,8 @@ class Neo4jConnection(BaseConnection):
         self,
         query: str,
         parameters: dict[str, Any] | None = None,
-        database: str | None = None
+        database: str | None = None,
+        transaction=None
     ) -> list[dict[str, Any]]:
         """Execute a Cypher query.
         
@@ -122,6 +123,7 @@ class Neo4jConnection(BaseConnection):
             query: Cypher query string
             parameters: Query parameters
             database: Target database (None for default)
+            transaction: Neo4j transaction object (for transaction mode)
             
         Returns:
             List of result records as dictionaries
@@ -132,15 +134,21 @@ class Neo4jConnection(BaseConnection):
         await self.ensure_connected()
         
         try:
+            # If transaction is provided, use it directly
+            if transaction:
+                result = await transaction.run(query, parameters or {})
+                return [record.data() async for record in result]
+            
+            # Otherwise use a session
             async with self._driver.session(database=database) as session:
                 result = await session.run(query, parameters or {})
                 return [record.data() async for record in result]
                 
         except (ServiceUnavailable, SessionExpired) as e:
             logger.error("Connection error during query execution: %s", e)
-            if self.config.enable_auto_reconnect:
+            if self.config.enable_auto_reconnect and not transaction:
                 await self.connect_with_retry()
-                # Retry once after reconnection
+                # Retry once after reconnection (only if not in transaction mode)
                 return await self.execute_query(query, parameters, database)
             raise Neo4jConnectionError(f"Connection error: {e}") from e
             
