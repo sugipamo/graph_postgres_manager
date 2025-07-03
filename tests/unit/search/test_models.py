@@ -51,7 +51,7 @@ class TestSearchModels:
     def test_search_query_validation(self):
         """Test SearchQuery validation."""
         # No query or vector
-        with pytest.raises(ValueError, match="Either query text or vector must be provided"):
+        with pytest.raises(ValueError, match="Either query text, vector, or node type filters must be provided"):
             SearchQuery(query="")
         
         # Invalid vector dimensions

@@ -4,6 +4,7 @@ import asyncio
 from datetime import datetime
 
 import pytest
+import pytest_asyncio
 
 from graph_postgres_manager import GraphPostgresManager
 
@@ -12,12 +13,9 @@ from graph_postgres_manager import GraphPostgresManager
 class TestTransactionIntegration:
     """Integration tests for transaction management."""
     
-    @pytest.fixture
-    async def manager(self, config):
-        """Create and initialize manager."""
-        manager = GraphPostgresManager(config)
-        await manager.initialize()
-        
+    @pytest_asyncio.fixture
+    async def transaction_manager(self, manager):
+        """Create and initialize transaction manager."""
         # Clean up test data
         try:
             await manager.execute_neo4j_query(
@@ -50,15 +48,13 @@ class TestTransactionIntegration:
             )
         except Exception:
             pass
-        
-        await manager.close()
     
     @pytest.mark.asyncio
-    async def test_simple_transaction_commit(self, manager):
+    async def test_simple_transaction_commit(self, transaction_manager):
         """Test simple transaction with successful commit."""
         node_id = "test-node-1"
         
-        async with manager.transaction() as tx:
+        async with transaction_manager.transaction() as tx:
             # Create node in Neo4j
             await tx.neo4j_execute(
                 "CREATE (n:TransactionTest {id: $id, created: $created})",
@@ -72,14 +68,14 @@ class TestTransactionIntegration:
             )
         
         # Verify both operations were committed
-        neo4j_result = await manager.execute_neo4j_query(
+        neo4j_result = await transaction_manager.execute_neo4j_query(
             "MATCH (n:TransactionTest {id: $id}) RETURN n",
             {"id": node_id}
         )
         assert len(neo4j_result) == 1
         assert neo4j_result[0]["n"]["id"] == node_id
         
-        postgres_result = await manager.execute_postgres_query(
+        postgres_result = await transaction_manager.execute_postgres_query(
             "SELECT * FROM transaction_test WHERE node_id = %(node_id)s",
             {"node_id": node_id}
         )
@@ -92,7 +88,7 @@ class TestTransactionIntegration:
         node_id = "test-node-2"
         
         with pytest.raises(Exception):
-            async with manager.transaction() as tx:
+            async with transaction_manager.transaction() as tx:
                 # Create node in Neo4j
                 await tx.neo4j_execute(
                     "CREATE (n:TransactionTest {id: $id})",
@@ -126,7 +122,7 @@ class TestTransactionIntegration:
         """Test manual transaction rollback."""
         node_id = "test-node-3"
         
-        async with manager.transaction() as tx:
+        async with transaction_manager.transaction() as tx:
             # Create node in Neo4j
             await tx.neo4j_execute(
                 "CREATE (n:TransactionTest {id: $id})",
@@ -161,7 +157,7 @@ class TestTransactionIntegration:
         async def create_node_and_record(tx_id: int):
             node_id = f"test-node-concurrent-{tx_id}"
             
-            async with manager.transaction() as tx:
+            async with transaction_manager.transaction() as tx:
                 # Add small delay to increase chance of concurrency issues
                 await asyncio.sleep(0.1)
                 
@@ -225,7 +221,7 @@ class TestTransactionIntegration:
         base_node_id = "test-batch-node"
         batch_size = 10
         
-        async with manager.transaction() as tx:
+        async with transaction_manager.transaction() as tx:
             # Create multiple nodes in Neo4j
             for i in range(batch_size):
                 await tx.neo4j_execute(
@@ -259,7 +255,7 @@ class TestTransactionIntegration:
         user_id = "test-user-1"
         post_id = "test-post-1"
         
-        async with manager.transaction() as tx:
+        async with transaction_manager.transaction() as tx:
             # Create user and post nodes
             await tx.neo4j_execute(
                 """
