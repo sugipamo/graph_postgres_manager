@@ -50,7 +50,8 @@ class PostgresConnection(BaseConnection):
                 kwargs={
                     "row_factory": dict_row,
                     "autocommit": False,
-                }
+                },
+                open=False  # 明示的にFalseを指定して警告を回避
             )
             
             # Initialize pool

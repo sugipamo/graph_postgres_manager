@@ -12,7 +12,7 @@ class TestDataOperations:
     """データ操作のテストクラス"""
     
     @pytest.mark.asyncio
-    async def test_neo4j_node_crud(self, manager: GraphPostgresManager, _clean_neo4j):
+    async def test_neo4j_node_crud(self, manager: GraphPostgresManager, clean_neo4j):
         """Neo4jのノードCRUD操作テスト"""
         # Create
         create_query = """
@@ -52,7 +52,7 @@ class TestDataOperations:
         assert len(result) == 0
     
     @pytest.mark.asyncio
-    async def test_neo4j_relationship_crud(self, manager: GraphPostgresManager, _clean_neo4j):
+    async def test_neo4j_relationship_crud(self, manager: GraphPostgresManager, clean_neo4j):
         """Neo4jのリレーションシップCRUD操作テスト"""
         # Create nodes and relationship
         create_query = """
@@ -95,7 +95,7 @@ class TestDataOperations:
         assert len(result) == 0
     
     @pytest.mark.asyncio
-    async def test_postgres_crud(self, manager: GraphPostgresManager, _clean_postgres):
+    async def test_postgres_crud(self, manager: GraphPostgresManager, clean_postgres):
         """PostgreSQLのCRUD操作テスト"""
         # Create
         insert_query = """
@@ -170,7 +170,7 @@ class TestDataOperations:
         assert count_result[0]["count"] == 100
     
     @pytest.mark.asyncio
-    async def test_batch_insert_postgres(self, manager: GraphPostgresManager, _clean_postgres):
+    async def test_batch_insert_postgres(self, manager: GraphPostgresManager, clean_postgres):
         """PostgreSQLのバッチインサートテスト"""
         # データを準備
         data = [

@@ -55,19 +55,45 @@ async def manager() -> AsyncGenerator[GraphPostgresManager, None]:
 @pytest_asyncio.fixture
 async def clean_neo4j(manager: GraphPostgresManager) -> AsyncGenerator[None, None]:
     """各テスト前後でNeo4jデータベースをクリーンアップ"""
+    # テスト前のクリーンアップ（前回の実行データを削除）
+    try:
+        await manager.neo4j.execute_query("MATCH (n) DETACH DELETE n")
+    except Exception:
+        # エラーは無視
+        pass
+    
     yield
     
     # テスト後のクリーンアップ
-    await manager.neo4j.execute_query("MATCH (n) DETACH DELETE n")
+    try:
+        await manager.neo4j.execute_query("MATCH (n) DETACH DELETE n")
+    except Exception:
+        # エラーは無視
+        pass
 
 
 @pytest_asyncio.fixture
 async def clean_postgres(manager: GraphPostgresManager) -> AsyncGenerator[None, None]:
     """各テスト前後でPostgreSQLデータベースをクリーンアップ"""
+    # テスト前のクリーンアップ（前回の実行データを削除）
+    try:
+        await manager.postgres.execute_query("DELETE FROM graph_data.metadata WHERE key LIKE 'test_key_%%'")
+        await manager.postgres.execute_query("DELETE FROM intent_ast_map WHERE ast_node_id LIKE 'test_%%'")
+        await manager.postgres.execute_query("DELETE FROM intent_vectors WHERE intent_id LIKE 'test_%%'")
+    except Exception:
+        # テーブルが存在しない場合は無視
+        pass
+    
     yield
     
     # テスト後のクリーンアップ
-    await manager.postgres.execute_query("TRUNCATE TABLE graph_data.metadata CASCADE")
+    try:
+        await manager.postgres.execute_query("TRUNCATE TABLE graph_data.metadata CASCADE")
+        await manager.postgres.execute_query("TRUNCATE TABLE intent_ast_map CASCADE")
+        await manager.postgres.execute_query("TRUNCATE TABLE intent_vectors CASCADE")
+    except Exception:
+        # テーブルが存在しない場合は無視
+        pass
 
 
 @pytest_asyncio.fixture

@@ -59,7 +59,7 @@ class TestConnectionManagement:
         await manager.neo4j_connection.execute_query("MATCH (n:TestNode) DELETE n")
     
     @pytest.mark.asyncio
-    async def test_postgres_connection_pool(self, manager: GraphPostgresManager):
+    async def test_postgres_connection_pool(self, manager: GraphPostgresManager, clean_postgres):
         """PostgreSQLのコネクションプールテスト"""
         async def insert_data(index: int):
             query = """
