@@ -80,7 +80,7 @@ class TestConnectionManagement:
         
         # 挿入されたデータを確認
         count_result = await manager.postgres_connection.execute_query(
-            "SELECT COUNT(*) AS count FROM graph_data.metadata WHERE key LIKE 'test_key_%'"
+            "SELECT COUNT(*) AS count FROM graph_data.metadata WHERE key LIKE 'test_key_%%'"
         )
         assert count_result[0]["count"] == 10
     
