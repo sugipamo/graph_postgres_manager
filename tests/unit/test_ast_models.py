@@ -1,7 +1,8 @@
 """Test cases for AST models."""
 
-import pytest
 from dataclasses import asdict
+
+import pytest
 
 from graph_postgres_manager.models.ast import ASTNode, EdgeType
 

@@ -16,7 +16,7 @@ try:
                 tool_input = obj.get("input", {})
                 if "file_path" in tool_input:
                     last_message = f"Update: {tool_input['file_path']}"
-except Exception as e:
+except Exception:
     pass
 
 import subprocess
@@ -25,17 +25,17 @@ import sys
 try:
     # 変更があるか確認
     status = subprocess.run(
-        ['git', 'status', '--porcelain'],
+        ["git", "status", "--porcelain"],
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
         check=True
     )
 
     if status.stdout.strip():  # 変更があれば
-        subprocess.run(['git', 'add', '.'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run(['git', 'commit', '-m', 'Auto commit'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["git", "add", "."], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["git", "commit", "-m", "Auto commit"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    subprocess.run(['git', 'push'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+    subprocess.run(["git", "push"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
 
 except subprocess.CalledProcessError:
     sys.exit(1)

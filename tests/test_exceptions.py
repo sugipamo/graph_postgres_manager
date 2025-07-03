@@ -8,10 +8,10 @@ from graph_postgres_manager import (
     GraphPostgresManagerException,
     HealthCheckError,
     Neo4jConnectionError,
+    OperationTimeoutError,
     PoolExhaustedError,
     PostgresConnectionError,
     RetryExhaustedError,
-    TimeoutError,
 )
 
 
@@ -57,9 +57,9 @@ class TestExceptions:
         assert isinstance(exc, GraphPostgresManagerException)
         assert str(exc) == "Health check failed"
     
-    def test_timeout_error(self):
-        """Test timeout error."""
-        exc = TimeoutError("Operation timed out")
+    def test_operation_timeout_error(self):
+        """Test operation timeout error."""
+        exc = OperationTimeoutError("Operation timed out")
         assert isinstance(exc, GraphPostgresManagerException)
         assert str(exc) == "Operation timed out"
     

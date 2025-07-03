@@ -1,5 +1,7 @@
 # code_intent_search統合実装の詳細設計
 
+**ステータス**: ✅ 完了 (2025-01-03)
+
 ## 概要
 graph_postgres_managerにcode_intent_searchライブラリとの統合機能を実装し、Code-Smithプロジェクトの統合検索インターフェースを提供する。
 

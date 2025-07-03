@@ -8,15 +8,16 @@ from .exceptions import (
     GraphPostgresManagerException,
     HealthCheckError,
     Neo4jConnectionError,
+    OperationTimeoutError,
     PoolExhaustedError,
     PostgresConnectionError,
     RetryExhaustedError,
-    TimeoutError,
     ValidationError,
 )
 from .intent import IntentManager, IntentMapping, IntentVector
 from .manager import GraphPostgresManager
 from .models import ConnectionState, HealthStatus
+from .search import SearchFilter, SearchManager, SearchQuery, SearchResult, SearchType
 
 __version__ = "0.1.0"
 
@@ -34,9 +35,14 @@ __all__ = [
     "IntentMapping",
     "IntentVector",
     "Neo4jConnectionError",
+    "OperationTimeoutError",
     "PoolExhaustedError",
     "PostgresConnectionError",
     "RetryExhaustedError",
-    "TimeoutError",
+    "SearchFilter",
+    "SearchManager",
+    "SearchQuery",
+    "SearchResult",
+    "SearchType",
     "ValidationError",
 ]

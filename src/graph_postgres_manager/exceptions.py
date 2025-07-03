@@ -30,7 +30,7 @@ class HealthCheckError(GraphPostgresManagerException):
     """Raised when health check fails."""
 
 
-class TimeoutError(GraphPostgresManagerException):
+class OperationTimeoutError(GraphPostgresManagerException):
     """Raised when operation times out."""
 
 

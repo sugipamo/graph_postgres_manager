@@ -1,10 +1,11 @@
 """Test cases for AST storage functionality."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
+import pytest
+
+from graph_postgres_manager.exceptions import DataOperationError, ValidationError
 from graph_postgres_manager.manager import GraphPostgresManager
-from graph_postgres_manager.exceptions import ValidationError, DataOperationError
 
 
 class TestASTStore:

@@ -1,7 +1,6 @@
 """Unit tests for IntentManager."""
 
-import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -83,27 +82,31 @@ class TestIntentManager:
     @pytest.mark.asyncio
     async def test_link_intent_to_ast_success(self, intent_manager, mock_postgres_connection):
         """Test successful intent-AST linking."""
+        from datetime import datetime
         intent_manager._schema_initialized = True
         
         mock_conn = AsyncMock()
+        
+        # Create transaction context manager
         mock_transaction = AsyncMock()
-        mock_conn.transaction.return_value = mock_transaction
-        mock_transaction.__aenter__.return_value = mock_transaction
-        mock_transaction.__aexit__.return_value = None
+        mock_transaction.__aenter__ = AsyncMock(return_value=mock_transaction)
+        mock_transaction.__aexit__ = AsyncMock(return_value=None)
+        mock_conn.transaction = MagicMock(return_value=mock_transaction)
         
         # Mock the mapping insert
         mock_conn.fetchone = AsyncMock(side_effect=[
-            ("uuid1", "2024-01-01 00:00:00", "2024-01-01 00:00:00"),
-            ("uuid2", "2024-01-01 00:00:00", "2024-01-01 00:00:00"),
+            ("uuid1", datetime(2024, 1, 1, 0, 0, 0), datetime(2024, 1, 1, 0, 0, 0)),
+            ("uuid2", datetime(2024, 1, 1, 0, 0, 0), datetime(2024, 1, 1, 0, 0, 0)),
             (True,),  # Vector table exists
         ])
         mock_conn.execute = AsyncMock()
         
+        # Create connection context manager
         mock_context = AsyncMock()
-        mock_context.__aenter__.return_value = mock_conn
-        mock_context.__aexit__.return_value = None
+        mock_context.__aenter__ = AsyncMock(return_value=mock_conn)
+        mock_context.__aexit__ = AsyncMock(return_value=None)
         
-        mock_postgres_connection.get_connection.return_value = mock_context
+        mock_postgres_connection.get_connection = MagicMock(return_value=mock_context)
         
         result = await intent_manager.link_intent_to_ast(
             intent_id="intent1",
@@ -123,21 +126,22 @@ class TestIntentManager:
     @pytest.mark.asyncio
     async def test_get_ast_nodes_by_intent(self, intent_manager, mock_postgres_connection):
         """Test retrieving AST nodes by intent."""
+        from datetime import datetime
         intent_manager._schema_initialized = True
         
         mock_conn = AsyncMock()
         mock_conn.fetch = AsyncMock(return_value=[
             ("uuid1", "node1", "source1", 0.95, '{"key": "value"}', 
-             "2024-01-01 00:00:00", "2024-01-01 00:00:00"),
+             datetime(2024, 1, 1, 0, 0, 0), datetime(2024, 1, 1, 0, 0, 0)),
             ("uuid2", "node2", "source1", 0.90, None, 
-             "2024-01-01 00:00:00", "2024-01-01 00:00:00"),
+             datetime(2024, 1, 1, 0, 0, 0), datetime(2024, 1, 1, 0, 0, 0)),
         ])
         
         mock_context = AsyncMock()
-        mock_context.__aenter__.return_value = mock_conn
-        mock_context.__aexit__.return_value = None
+        mock_context.__aenter__ = AsyncMock(return_value=mock_conn)
+        mock_context.__aexit__ = AsyncMock(return_value=None)
         
-        mock_postgres_connection.get_connection.return_value = mock_context
+        mock_postgres_connection.get_connection = MagicMock(return_value=mock_context)
         
         result = await intent_manager.get_ast_nodes_by_intent("intent1", "source1")
         

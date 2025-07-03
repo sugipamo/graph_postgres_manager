@@ -12,6 +12,7 @@ from .exceptions import DataOperationError, GraphPostgresManagerException, Valid
 from .intent import IntentManager
 from .metadata import IndexManager, SchemaManager, StatsCollector
 from .models import EdgeType, HealthStatus
+from .search import SearchManager, SearchQuery, SearchResult
 from .transactions import TransactionManager
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,7 @@ class GraphPostgresManager:
         self._index_manager: IndexManager | None = None
         self._stats_collector: StatsCollector | None = None
         self._intent_manager: IntentManager | None = None
+        self._search_manager: SearchManager | None = None
         
         # For test compatibility
         self._neo4j_conn = self.neo4j
@@ -74,6 +76,13 @@ class GraphPostgresManager:
         self._index_manager = IndexManager(self.postgres)
         self._stats_collector = StatsCollector(self.postgres)
         self._intent_manager = IntentManager(self.postgres)
+        
+        # Initialize search manager
+        self._search_manager = SearchManager(
+            neo4j_connection=self.neo4j,
+            postgres_connection=self.postgres,
+            intent_manager=self._intent_manager
+        )
         
         # Initialize metadata schema
         await self._schema_manager.initialize_metadata_schema()
@@ -358,6 +367,20 @@ class GraphPostgresManager:
         if not self._is_initialized or not self._intent_manager:
             raise GraphPostgresManagerException("Manager not initialized")
         return self._intent_manager
+    
+    @property
+    def search_manager(self) -> SearchManager:
+        """Get the search manager instance.
+        
+        Returns:
+            SearchManager instance
+            
+        Raises:
+            GraphPostgresManagerException: If manager not initialized
+        """
+        if not self._is_initialized or not self._search_manager:
+            raise GraphPostgresManagerException("Manager not initialized")
+        return self._search_manager
     
     async def get_postgres_schema_info(self, schema_name: str = "public") -> dict[str, Any]:
         """Get PostgreSQL schema information.
@@ -763,3 +786,80 @@ class GraphPostgresManager:
             intent_id=intent_id,
             ast_node_id=ast_node_id
         )
+    
+    # Unified Search
+    
+    async def search_unified(
+        self,
+        query: str | SearchQuery,
+        include_graph: bool = True,
+        include_vector: bool = True,
+        include_text: bool = True,
+        vector: list[float] | None = None,
+        filters: dict[str, Any] | None = None,
+        max_results: int = 100
+    ) -> list[SearchResult]:
+        """Perform unified search across all data sources.
+        
+        This method integrates graph search (Neo4j), vector search (pgvector),
+        and full-text search (PostgreSQL) to provide comprehensive search results.
+        
+        Args:
+            query: Search query string or SearchQuery object
+            include_graph: Include Neo4j graph search
+            include_vector: Include vector similarity search
+            include_text: Include PostgreSQL full-text search
+            vector: Optional 768-dimensional search vector
+            filters: Optional filters (node_types, source_ids, etc.)
+            max_results: Maximum number of results to return
+            
+        Returns:
+            List of SearchResult objects ranked by relevance
+            
+        Raises:
+            GraphPostgresManagerException: If manager not initialized
+            ValidationError: If inputs are invalid
+            DataOperationError: If search fails
+        """
+        if not self._is_initialized:
+            raise GraphPostgresManagerException("Manager not initialized")
+        
+        # Build SearchQuery if string provided
+        if isinstance(query, str):
+            from .search import SearchFilter, SearchType
+            
+            # Determine search types based on parameters
+            search_types = []
+            if include_graph and include_vector and include_text:
+                search_types = [SearchType.UNIFIED]
+            else:
+                if include_graph:
+                    search_types.append(SearchType.GRAPH)
+                if include_vector and vector:
+                    search_types.append(SearchType.VECTOR)
+                if include_text:
+                    search_types.append(SearchType.TEXT)
+            
+            # Build filter from dict
+            filter_obj = SearchFilter(max_results=max_results)
+            if filters:
+                if "node_types" in filters:
+                    filter_obj.node_types = filters["node_types"]
+                if "source_ids" in filters:
+                    filter_obj.source_ids = filters["source_ids"]
+                if "file_patterns" in filters:
+                    filter_obj.file_patterns = filters["file_patterns"]
+                if "min_confidence" in filters:
+                    filter_obj.min_confidence = filters["min_confidence"]
+            
+            query_obj = SearchQuery(
+                query=query,
+                search_types=search_types,
+                filters=filter_obj,
+                vector=vector
+            )
+        else:
+            query_obj = query
+        
+        # Execute search
+        return await self.search_manager.search(query_obj)

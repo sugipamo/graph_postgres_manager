@@ -110,7 +110,7 @@ async def wait_for_postgres(config: ConnectionConfig, max_retries: int = 30) -> 
     return False
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest_asyncio.fixture(scope="session", autouse=True)
 async def wait_for_services(event_loop):
     """テスト実行前にサービスが利用可能になるまで待機"""
     config = get_test_config()

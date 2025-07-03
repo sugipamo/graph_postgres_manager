@@ -11,10 +11,8 @@ from typing import Any
 from ..config import ConnectionConfig
 from ..exceptions import (
     ConnectionException,
+    OperationTimeoutError,
     RetryExhaustedError,
-)
-from ..exceptions import (
-    TimeoutError as CustomTimeoutError,
 )
 from ..models.types import ConnectionState
 
@@ -162,7 +160,7 @@ class BaseConnection(ABC):
         try:
             return await asyncio.wait_for(coro, timeout=timeout)
         except TimeoutError:
-            raise CustomTimeoutError(f"Operation timed out after {timeout} seconds")
+            raise OperationTimeoutError(f"Operation timed out after {timeout} seconds")
     
     @asynccontextmanager
     async def acquire_connection(self) -> AsyncIterator[Any]:
