@@ -3,7 +3,6 @@
 import json
 import logging
 from typing import Any
-from uuid import uuid4
 
 from ..connections import PostgresConnection
 from ..exceptions import DataOperationError, ValidationError

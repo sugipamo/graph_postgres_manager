@@ -3,4 +3,4 @@
 from .ast import ASTNode, EdgeType
 from .types import ConnectionState, HealthStatus
 
-__all__ = ["ConnectionState", "HealthStatus", "ASTNode", "EdgeType"]
+__all__ = ["ASTNode", "ConnectionState", "EdgeType", "HealthStatus"]

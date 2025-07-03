@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Dict, Any
+from typing import Any
 
 
 class EdgeType(Enum):
@@ -20,10 +20,10 @@ class ASTNode:
     id: str
     node_type: str
     source_id: str
-    value: Optional[str] = None
-    lineno: Optional[int] = None
+    value: str | None = None
+    lineno: int | None = None
     
-    def to_cypher_properties(self) -> Dict[str, Any]:
+    def to_cypher_properties(self) -> dict[str, Any]:
         """Convert to Cypher properties, excluding None values."""
         props = {
             "id": self.id,

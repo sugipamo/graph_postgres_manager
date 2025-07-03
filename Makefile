@@ -44,17 +44,17 @@ test-env-logs:
 # Testing
 test-unit:
 	@echo "Running unit tests..."
-	python -m pytest tests/ -v --ignore=tests/integration/
+	python3 -m pytest tests/ -v --ignore=tests/integration/
 
 test-integration: test-env-up
 	@echo "Running integration tests..."
-	docker-compose run --rm app python -m pytest tests/integration/ -v
+	docker-compose run --rm app python3 -m pytest tests/integration/ -v
 
 test-all: test-unit test-integration
 
 test: test-env-up
 	@echo "Running all tests..."
-	docker-compose run --rm app python -m pytest tests/ -v
+	docker-compose run --rm app python3 -m pytest tests/ -v
 	@make test-env-down
 
 # Code quality

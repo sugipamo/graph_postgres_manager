@@ -4,7 +4,7 @@ import asyncio
 import logging
 import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -62,7 +62,7 @@ class TransactionContext:
         if self.state != TransactionState.PENDING:
             raise TransactionError(f"Cannot begin transaction in state {self.state}")
         
-        self._start_time = datetime.utcnow()
+        self._start_time = datetime.now(UTC)
         self.state = TransactionState.ACTIVE
         
         if not self.is_nested:
@@ -83,7 +83,7 @@ class TransactionContext:
                 await self._single_phase_commit()
             
             self.state = TransactionState.COMMITTED
-            self._end_time = datetime.utcnow()
+            self._end_time = datetime.now(UTC)
             await self._log_operation("commit", {"duration": self._get_duration()})
             
         except Exception as e:
@@ -117,7 +117,7 @@ class TransactionContext:
                 raise TransactionRollbackError(f"Rollback errors: {', '.join(errors)}")
             
             self.state = TransactionState.ROLLED_BACK
-            self._end_time = datetime.utcnow()
+            self._end_time = datetime.now(UTC)
             await self._log_operation("rollback", {"duration": self._get_duration()})
             
         except Exception as e:
@@ -192,7 +192,7 @@ class TransactionContext:
     async def _log_operation(self, action: str, details: dict[str, Any]) -> None:
         """操作をログに記録"""
         operation = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "transaction_id": self.transaction_id,
             "action": action,
             "details": details

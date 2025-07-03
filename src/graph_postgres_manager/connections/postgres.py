@@ -433,3 +433,78 @@ class PostgresConnection(BaseConnection):
         except Exception as e:
             logger.error(f"Failed to commit prepared transaction: {e}")
             raise PostgresConnectionError(f"Failed to commit prepared transaction: {e}") from e
+    
+    async def fetch_all(self, query: str, parameters: tuple | list | dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Execute a query and fetch all results.
+        
+        Args:
+            query: SQL query string
+            parameters: Query parameters as tuple, list, or dict
+            
+        Returns:
+            List of result records as dictionaries
+            
+        Raises:
+            PostgresConnectionError: If query execution fails
+        """
+        # Convert parameters to dict if needed for execute_query compatibility
+        if isinstance(parameters, (tuple, list)):
+            # For positional parameters, we'll use the execute method directly
+            try:
+                async with self.acquire_connection() as conn:
+                    async with conn.cursor() as cur:
+                        await cur.execute(query, parameters)
+                        results = await cur.fetchall()
+                        return [dict(row) for row in results]
+            except psycopg.Error as e:
+                logger.error(f"PostgreSQL query execution failed: {e}")
+                raise PostgresConnectionError(f"Query execution failed: {e}") from e
+        else:
+            # For dict parameters or None, use execute_query
+            return await self.execute_query(query, parameters, fetch_all=True)
+    
+    async def fetch_one(self, query: str, parameters: tuple | list | dict[str, Any] | None = None) -> dict[str, Any] | None:
+        """Execute a query and fetch one result.
+        
+        Args:
+            query: SQL query string
+            parameters: Query parameters as tuple, list, or dict
+            
+        Returns:
+            Single result record as dictionary or None if no results
+            
+        Raises:
+            PostgresConnectionError: If query execution fails
+        """
+        # Convert parameters to dict if needed for execute_query compatibility
+        if isinstance(parameters, (tuple, list)):
+            # For positional parameters, we'll use the execute method directly
+            try:
+                async with self.acquire_connection() as conn:
+                    async with conn.cursor() as cur:
+                        await cur.execute(query, parameters)
+                        result = await cur.fetchone()
+                        return dict(result) if result else None
+            except psycopg.Error as e:
+                logger.error(f"PostgreSQL query execution failed: {e}")
+                raise PostgresConnectionError(f"Query execution failed: {e}") from e
+        else:
+            # For dict parameters or None, use execute_query
+            results = await self.execute_query(query, parameters, fetch_all=False)
+            return results[0] if results else None
+    
+    @asynccontextmanager
+    async def get_connection(self) -> AsyncIterator[AsyncConnection]:
+        """Get a connection from the pool.
+        
+        This is an alias for acquire_connection for compatibility.
+        
+        Yields:
+            PostgreSQL connection
+            
+        Raises:
+            PoolExhaustedError: If pool is exhausted
+            PostgresConnectionError: If connection fails
+        """
+        async with self.acquire_connection() as conn:
+            yield conn
