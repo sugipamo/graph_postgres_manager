@@ -6,9 +6,9 @@ import json
 from datetime import datetime
 from typing import Any
 
-from ..connections.postgres import PostgresConnection
-from ..exceptions import MetadataError, SchemaError
-from .models import (
+from graph_postgres_manager.connections.postgres import PostgresConnection
+from graph_postgres_manager.exceptions import MetadataError, SchemaError
+from graph_postgres_manager.metadata.models import (
     ChangeType,
     Migration,
     MigrationStatus,

@@ -8,13 +8,13 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Any
 
-from ..config import ConnectionConfig
-from ..exceptions import (
+from graph_postgres_manager.config import ConnectionConfig
+from graph_postgres_manager.exceptions import (
     ConnectionException,
     OperationTimeoutError,
     RetryExhaustedError,
 )
-from ..models.types import ConnectionState
+from graph_postgres_manager.models.types import ConnectionState
 
 logger = logging.getLogger(__name__)
 

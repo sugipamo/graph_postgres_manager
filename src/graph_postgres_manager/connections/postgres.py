@@ -1,5 +1,6 @@
 """PostgreSQL connection management."""
 
+import asyncio
 import logging
 import time
 from collections.abc import AsyncIterator
@@ -15,10 +16,10 @@ except ImportError:
     from psycopg_pool import AsyncConnectionPool
 from psycopg.rows import dict_row
 
-from ..config import ConnectionConfig
-from ..exceptions import PoolExhaustedError, PostgresConnectionError
-from ..models.types import ConnectionState
-from .base import BaseConnection
+from graph_postgres_manager.config import ConnectionConfig
+from graph_postgres_manager.exceptions import PoolExhaustedError, PostgresConnectionError
+from graph_postgres_manager.models.types import ConnectionState
+from graph_postgres_manager.connections.base import BaseConnection
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +130,7 @@ class PostgresConnection(BaseConnection):
         try:
             async with self._pool.connection() as conn:
                 yield conn
-        except psycopg.PoolTimeout:
+        except asyncio.TimeoutError:
             raise PoolExhaustedError(
                 f"Connection pool exhausted (timeout: {self.config.timeout_seconds}s)"
             )
@@ -160,6 +161,11 @@ class PostgresConnection(BaseConnection):
             async with self.acquire_connection() as conn:
                 async with conn.cursor() as cur:
                     await cur.execute(query, parameters or {})
+                    
+                    # Check if the query returns results
+                    if cur.description is None:
+                        # DDL statements like CREATE, ALTER, DROP don't return results
+                        return []
                     
                     if fetch_all:
                         results = await cur.fetchall()
@@ -318,6 +324,10 @@ class PostgresConnection(BaseConnection):
                 conn = transaction
                 async with conn.cursor() as cur:
                     await cur.execute(query, parameters or {})
+                    # Check if the query returns results
+                    if cur.description is None:
+                        # DDL statements like CREATE, ALTER, DROP don't return results
+                        return []
                     results = await cur.fetchall()
                     return [dict(row) for row in results]
             except psycopg.Error as e:

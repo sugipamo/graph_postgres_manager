@@ -6,11 +6,11 @@ import logging
 from collections import defaultdict
 from typing import Any
 
-from ..connections.neo4j import Neo4jConnection
-from ..connections.postgres import PostgresConnection
-from ..exceptions import DataOperationError, ValidationError
-from ..intent.manager import IntentManager
-from .models import SearchFilter, SearchQuery, SearchResult, SearchType
+from graph_postgres_manager.connections.neo4j import Neo4jConnection
+from graph_postgres_manager.connections.postgres import PostgresConnection
+from graph_postgres_manager.exceptions import DataOperationError
+from graph_postgres_manager.intent.manager import IntentManager
+from graph_postgres_manager.search.models import SearchQuery, SearchResult, SearchType
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,6 @@
 """トランザクション管理モジュール"""
 
-from .manager import (
+from graph_postgres_manager.transactions.manager import (
     TransactionContext,
     TransactionError,
     TransactionManager,

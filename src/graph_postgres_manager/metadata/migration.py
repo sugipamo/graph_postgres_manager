@@ -6,9 +6,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from ..connections.postgres import PostgresConnection
-from ..exceptions import SchemaError
-from .models import Migration, MigrationStatus
+from graph_postgres_manager.connections.postgres import PostgresConnection
+from graph_postgres_manager.exceptions import SchemaError
+from graph_postgres_manager.metadata.models import Migration, MigrationStatus
 
 
 class MigrationManager:

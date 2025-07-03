@@ -113,11 +113,13 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Apply update timestamp triggers
+DROP TRIGGER IF EXISTS update_index_stats_timestamp ON _graph_postgres_metadata.index_stats;
 CREATE TRIGGER update_index_stats_timestamp
     BEFORE UPDATE ON _graph_postgres_metadata.index_stats
     FOR EACH ROW
     EXECUTE FUNCTION _graph_postgres_metadata.update_updated_at();
 
+DROP TRIGGER IF EXISTS update_query_patterns_timestamp ON _graph_postgres_metadata.query_patterns;
 CREATE TRIGGER update_query_patterns_timestamp
     BEFORE UPDATE ON _graph_postgres_metadata.query_patterns
     FOR EACH ROW

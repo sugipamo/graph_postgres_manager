@@ -3,7 +3,7 @@
 import os
 from dataclasses import dataclass, field
 
-from .exceptions import ConfigurationError
+from graph_postgres_manager.exceptions import ConfigurationError
 
 
 @dataclass

@@ -1,5 +1,6 @@
 """Neo4j connection management."""
 
+import asyncio
 import logging
 import time
 from typing import Any
@@ -11,10 +12,10 @@ from neo4j.exceptions import (
     SessionExpired,
 )
 
-from ..config import ConnectionConfig
-from ..exceptions import Neo4jConnectionError
-from ..models.types import ConnectionState
-from .base import BaseConnection
+from graph_postgres_manager.config import ConnectionConfig
+from graph_postgres_manager.exceptions import Neo4jConnectionError
+from graph_postgres_manager.models.types import ConnectionState
+from graph_postgres_manager.connections.base import BaseConnection
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,13 @@ class Neo4jConnection(BaseConnection):
             raise Neo4jConnectionError(f"Failed to connect to Neo4j: {e}") from e
         except Exception as e:
             self._state = ConnectionState.FAILED
-            logger.error(f"Unexpected error connecting to Neo4j: {e}")
+            error_msg = str(e)
+            if "authentication" in error_msg.lower() or "unauthorized" in error_msg.lower():
+                logger.error(f"Neo4j authentication failed: {e}")
+                # Add delay to prevent rate limiting
+                await asyncio.sleep(1)
+            else:
+                logger.error(f"Unexpected error connecting to Neo4j: {e}")
             raise Neo4jConnectionError(f"Unexpected error: {e}") from e
     
     async def disconnect(self) -> None:

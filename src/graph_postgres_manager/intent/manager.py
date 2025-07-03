@@ -4,8 +4,8 @@ import json
 import logging
 from typing import Any
 
-from ..connections import PostgresConnection
-from ..exceptions import DataOperationError, ValidationError
+from graph_postgres_manager.connections import PostgresConnection
+from graph_postgres_manager.exceptions import DataOperationError, ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -62,8 +62,10 @@ class IntentManager:
             await conn.execute(create_indexes)
             
             # Check for pgvector
-            result = await conn.fetchone(check_pgvector)
-            has_pgvector = result[0] if result else False
+            async with conn.cursor() as cur:
+                await cur.execute(check_pgvector)
+                result = await cur.fetchone()
+                has_pgvector = result["exists"] if result else False
             
             if has_pgvector:
                 # Create vector table if pgvector is available

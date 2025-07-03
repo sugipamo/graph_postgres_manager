@@ -2,7 +2,7 @@
 
 import pytest
 
-from graph_postgres_manager import GraphPostgresManager, SearchQuery, SearchType
+from graph_postgres_manager import SearchQuery, SearchType
 
 
 class TestSearchIntegration:

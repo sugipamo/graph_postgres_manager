@@ -5,7 +5,13 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from graph_postgres_manager.exceptions import DataOperationError
-from graph_postgres_manager.search import SearchFilter, SearchManager, SearchQuery, SearchResult, SearchType
+from graph_postgres_manager.search import (
+    SearchFilter,
+    SearchManager,
+    SearchQuery,
+    SearchResult,
+    SearchType,
+)
 
 
 class TestSearchManager:

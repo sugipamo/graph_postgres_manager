@@ -8,9 +8,9 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
-from ..connections.neo4j import Neo4jConnection
-from ..connections.postgres import PostgresConnection
-from ..exceptions import GraphPostgresManagerException
+from graph_postgres_manager.connections.neo4j import Neo4jConnection
+from graph_postgres_manager.connections.postgres import PostgresConnection
+from graph_postgres_manager.exceptions import GraphPostgresManagerException
 
 logger = logging.getLogger(__name__)
 
@@ -251,7 +251,7 @@ class TransactionManager:
                 try:
                     async with asyncio.timeout(ctx.timeout):
                         yield ctx
-                except TimeoutError:
+                except asyncio.TimeoutError:
                     await ctx.rollback()
                     raise
             else:
@@ -261,13 +261,18 @@ class TransactionManager:
             if ctx.state == TransactionState.ACTIVE:
                 await ctx.commit()
                 
-        except Exception:
+        except Exception as original_error:
             # エラー発生時、まだロールバックされていなければロールバック
             if ctx.state in (TransactionState.ACTIVE, TransactionState.PREPARING, TransactionState.PREPARED):
                 try:
                     await ctx.rollback()
+                except TransactionRollbackError:
+                    # TransactionRollbackErrorはそのまま再発生させる
+                    raise
                 except Exception as rollback_error:
                     logger.error(f"Failed to rollback transaction {transaction_id}: {rollback_error}")
+                    # ロールバックエラーをTransactionRollbackErrorとして再発生
+                    raise TransactionRollbackError(f"Rollback errors: {rollback_error}") from original_error
             raise
         finally:
             del self._active_transactions[transaction_id]

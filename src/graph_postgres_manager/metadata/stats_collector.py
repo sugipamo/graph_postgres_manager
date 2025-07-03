@@ -6,9 +6,9 @@ import re
 from datetime import datetime, timedelta
 from typing import Any
 
-from ..connections.postgres import PostgresConnection
-from ..exceptions import MetadataError
-from .models import QueryPattern, TableStats
+from graph_postgres_manager.connections.postgres import PostgresConnection
+from graph_postgres_manager.exceptions import MetadataError
+from graph_postgres_manager.metadata.models import QueryPattern, TableStats
 
 
 class StatsCollector:
@@ -238,34 +238,42 @@ class StatsCollector:
         """
         tables = []
         
-        # Simple regex patterns for common cases
+        # Pattern for quoted identifiers
+        quoted_pattern = r'"([^"]+)"'
+        
+        # Pattern for unquoted identifiers
+        unquoted_pattern = r'([a-zA-Z_][a-zA-Z0-9_]*)'
+        
+        # Combined pattern: quoted or unquoted identifiers
+        identifier_pattern = f'(?:{quoted_pattern}|{unquoted_pattern})'
+        
         # FROM clause
-        from_pattern = r"FROM\s+([^\s,]+)"
+        from_pattern = rf"FROM\s+(?:[\w\.]+\.)?{identifier_pattern}"
         matches = re.finditer(from_pattern, query, re.IGNORECASE)
-        tables.extend([m.group(1) for m in matches])
+        for m in matches:
+            # Get the first non-None group (either quoted or unquoted)
+            table = m.group(1) or m.group(2)
+            if table:
+                tables.append(table)
         
         # JOIN clauses
-        join_pattern = r"JOIN\s+([^\s,]+)"
+        join_pattern = rf"JOIN\s+(?:[\w\.]+\.)?{identifier_pattern}"
         matches = re.finditer(join_pattern, query, re.IGNORECASE)
-        tables.extend([m.group(1) for m in matches])
+        for m in matches:
+            table = m.group(1) or m.group(2)
+            if table:
+                tables.append(table)
         
         # UPDATE/INSERT/DELETE
-        update_pattern = r"(?:UPDATE|INSERT\s+INTO|DELETE\s+FROM)\s+([^\s,]+)"
+        update_pattern = rf"(?:UPDATE|INSERT\s+INTO|DELETE\s+FROM)\s+(?:[\w\.]+\.)?{identifier_pattern}"
         matches = re.finditer(update_pattern, query, re.IGNORECASE)
-        tables.extend([m.group(1) for m in matches])
+        for m in matches:
+            table = m.group(1) or m.group(2)
+            if table:
+                tables.append(table)
         
-        # Remove duplicates and clean up
-        cleaned_tables = []
-        for table in set(tables):
-            # Remove schema prefix if present
-            if "." in table:
-                table = table.split(".")[-1]
-            # Remove quotes
-            table = table.strip('"')
-            if table and not table.startswith("("):
-                cleaned_tables.append(table)
-                
-        return list(set(cleaned_tables))
+        # Remove duplicates
+        return list(set(tables))
     
     async def _store_query_pattern(self, pattern: QueryPattern) -> None:
         """Store or update query pattern in metadata database."""

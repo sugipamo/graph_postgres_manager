@@ -3,8 +3,8 @@
 from datetime import datetime
 from typing import Any
 
-from ..connections.postgres import PostgresConnection
-from .models import IndexInfo
+from graph_postgres_manager.connections.postgres import PostgresConnection
+from graph_postgres_manager.metadata.models import IndexInfo
 
 
 class IndexManager:
@@ -157,7 +157,7 @@ class IndexManager:
                 })
         
         # Find duplicate indexes
-        duplicates = await self._find_duplicate_indexes(indexes)
+        duplicates = self._find_duplicate_indexes(indexes)
         analysis["duplicate_indexes"] = duplicates
         
         # Check for missing indexes based on table scans

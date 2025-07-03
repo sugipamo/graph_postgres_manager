@@ -131,7 +131,7 @@ class TestTransactionManager:
     @pytest.mark.asyncio
     async def test_transaction_timeout(self, transaction_manager):
         """トランザクションタイムアウトのテスト"""
-        async def slow_query():
+        async def slow_query(*args, **kwargs):
             await asyncio.sleep(2)
             return []
         

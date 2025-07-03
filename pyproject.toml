@@ -52,5 +52,7 @@ ignore_missing_imports = true
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+
+[tool.ruff.lint]
 select = ["E", "F", "B", "I", "N", "UP", "S", "A", "C4", "T10", "DJ", "EM", "G", "PIE", "PT", "Q", "RET", "SIM", "TID", "ARG", "PGH", "PLC", "PLE", "PLR", "PLW", "RUF"]
-ignore = ["PLR0913", "S101"]
+ignore = ["PLR0913", "S101", "PLR2004", "EM101", "EM102", "TRY003"]

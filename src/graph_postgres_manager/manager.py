@@ -6,14 +6,14 @@ import time
 from datetime import datetime
 from typing import Any
 
-from .config import ConnectionConfig
-from .connections import Neo4jConnection, PostgresConnection
-from .exceptions import DataOperationError, GraphPostgresManagerException, ValidationError
-from .intent import IntentManager
-from .metadata import IndexManager, SchemaManager, StatsCollector
-from .models import EdgeType, HealthStatus
-from .search import SearchManager, SearchQuery, SearchResult
-from .transactions import TransactionManager
+from graph_postgres_manager.config import ConnectionConfig
+from graph_postgres_manager.connections import Neo4jConnection, PostgresConnection
+from graph_postgres_manager.exceptions import DataOperationError, GraphPostgresManagerException, ValidationError
+from graph_postgres_manager.intent import IntentManager
+from graph_postgres_manager.metadata import IndexManager, SchemaManager, StatsCollector
+from graph_postgres_manager.models import EdgeType, HealthStatus
+from graph_postgres_manager.search import SearchManager, SearchQuery, SearchResult
+from graph_postgres_manager.transactions import TransactionManager
 
 logger = logging.getLogger(__name__)
 
@@ -826,7 +826,7 @@ class GraphPostgresManager:
         
         # Build SearchQuery if string provided
         if isinstance(query, str):
-            from .search import SearchFilter, SearchType
+            from graph_postgres_manager.search import SearchFilter, SearchType
             
             # Determine search types based on parameters
             search_types = []

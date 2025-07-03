@@ -1,7 +1,7 @@
 """Neo4jとPostgreSQLの統合管理を行うライブラリ"""
 
-from .config import ConnectionConfig
-from .exceptions import (
+from graph_postgres_manager.config import ConnectionConfig
+from graph_postgres_manager.exceptions import (
     ConfigurationError,
     ConnectionException,
     DataOperationError,
@@ -14,10 +14,10 @@ from .exceptions import (
     RetryExhaustedError,
     ValidationError,
 )
-from .intent import IntentManager, IntentMapping, IntentVector
-from .manager import GraphPostgresManager
-from .models import ConnectionState, HealthStatus
-from .search import SearchFilter, SearchManager, SearchQuery, SearchResult, SearchType
+from graph_postgres_manager.intent import IntentManager, IntentMapping, IntentVector
+from graph_postgres_manager.manager import GraphPostgresManager
+from graph_postgres_manager.models import ConnectionState, HealthStatus
+from graph_postgres_manager.search import SearchFilter, SearchManager, SearchQuery, SearchResult, SearchType
 
 __version__ = "0.1.0"
 
