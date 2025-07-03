@@ -1,7 +1,9 @@
 """PostgreSQL connection management."""
 
 import logging
+import re
 import time
+import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -97,10 +99,9 @@ class PostgresConnection(BaseConnection):
         try:
             start_time = time.time()
             
-            async with self._pool.connection() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute("SELECT 1 as health")
-                    await cur.fetchone()
+            async with self._pool.connection() as conn, conn.cursor() as cur:
+                await cur.execute("SELECT 1 as health")
+                await cur.fetchone()
             
             latency_ms = (time.time() - start_time) * 1000
             return True, latency_ms
@@ -158,20 +159,19 @@ class PostgresConnection(BaseConnection):
             PostgresConnectionError: If query execution fails
         """
         try:
-            async with self.acquire_connection() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute(query, parameters or {})
-                    
-                    # Check if the query returns results
-                    if cur.description is None:
-                        # DDL statements like CREATE, ALTER, DROP don't return results
-                        return []
-                    
-                    if fetch_all:
-                        results = await cur.fetchall()
-                        return [dict(row) for row in results]
-                    result = await cur.fetchone()
-                    return [dict(result)] if result else []
+            async with self.acquire_connection() as conn, conn.cursor() as cur:
+                await cur.execute(query, parameters or {})
+                
+                # Check if the query returns results
+                if cur.description is None:
+                    # DDL statements like CREATE, ALTER, DROP don't return results
+                    return []
+                
+                if fetch_all:
+                    results = await cur.fetchall()
+                    return [dict(row) for row in results]
+                result = await cur.fetchone()
+                return [dict(result)] if result else []
                         
         except psycopg.Error as e:
             logger.error("PostgreSQL query execution failed: %s", e)
@@ -195,28 +195,26 @@ class PostgresConnection(BaseConnection):
             PostgresConnectionError: If execution fails
         """
         try:
-            async with self.acquire_connection() as conn:
-                async with conn.cursor() as cur:
-                    # Convert dict parameters to tuples for executemany
-                    if data and isinstance(data[0], dict):
-                        # Extract parameter names from query
-                        import re
-                        param_names = re.findall(r"%\((\w+)\)s", query)
-                        
-                        # Convert dicts to tuples in correct order
-                        tuple_data = [
-                            tuple(row.get(param, None) for param in param_names)
-                            for row in data
-                        ]
-                        
-                        # Replace named placeholders with positional
-                        query_positional = re.sub(r"%\(\w+\)s", "%s", query)
-                        
-                        await cur.executemany(query_positional, tuple_data)
-                    else:
-                        await cur.executemany(query, data)
+            async with self.acquire_connection() as conn, conn.cursor() as cur:
+                # Convert dict parameters to tuples for executemany
+                if data and isinstance(data[0], dict):
+                    # Extract parameter names from query
+                    param_names = re.findall(r"%\((\w+)\)s", query)
                     
-                    return cur.rowcount or 0
+                    # Convert dicts to tuples in correct order
+                    tuple_data = [
+                        tuple(row.get(param, None) for param in param_names)
+                        for row in data
+                    ]
+                    
+                    # Replace named placeholders with positional
+                    query_positional = re.sub(r"%\(\w+\)s", "%s", query)
+                    
+                    await cur.executemany(query_positional, tuple_data)
+                else:
+                    await cur.executemany(query, data)
+                
+                return cur.rowcount or 0
                     
         except psycopg.Error as e:
             logger.error("PostgreSQL executemany failed: %s", e)
@@ -240,9 +238,8 @@ class PostgresConnection(BaseConnection):
             PostgresConnectionError: If transaction fails
         """
         try:
-            async with self.acquire_connection() as conn:
-                async with conn.transaction():
-                    return await transaction_func(conn, **kwargs)
+            async with self.acquire_connection() as conn, conn.transaction():
+                return await transaction_func(conn, **kwargs)
                     
         except Exception as e:
             logger.error("Transaction execution failed: %s", e)
@@ -265,9 +262,8 @@ class PostgresConnection(BaseConnection):
         query = f"CREATE TABLE IF NOT EXISTS {table_name} ({schema})"
         
         try:
-            async with self.acquire_connection() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute(query)
+            async with self.acquire_connection() as conn, conn.cursor() as cur:
+                await cur.execute(query)
                     
             logger.info("Ensured table %s exists", table_name)
             
@@ -408,7 +404,6 @@ class PostgresConnection(BaseConnection):
             
         try:
             # Generate unique transaction ID
-            import uuid
             xid = f"gpm_{uuid.uuid4().hex[:16]}"
             
             async with transaction.cursor() as cur:
@@ -435,9 +430,8 @@ class PostgresConnection(BaseConnection):
         try:
             xid = transaction._prepared_xid
             # Need a new connection to commit prepared transaction
-            async with self._pool.connection() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute(f"COMMIT PREPARED '{xid}'")
+            async with self._pool.connection() as conn, conn.cursor() as cur:
+                await cur.execute(f"COMMIT PREPARED '{xid}'")
             
             await self._pool.putconn(transaction)
         except Exception as e:
@@ -460,14 +454,13 @@ class PostgresConnection(BaseConnection):
             PostgresConnectionError: If query execution fails
         """
         # Convert parameters to dict if needed for execute_query compatibility
-        if isinstance(parameters, (tuple, list)):
+        if isinstance(parameters, tuple | list):
             # For positional parameters, we'll use the execute method directly
             try:
-                async with self.acquire_connection() as conn:
-                    async with conn.cursor() as cur:
-                        await cur.execute(query, parameters)
-                        results = await cur.fetchall()
-                        return [dict(row) for row in results]
+                async with self.acquire_connection() as conn, conn.cursor() as cur:
+                    await cur.execute(query, parameters)
+                    results = await cur.fetchall()
+                    return [dict(row) for row in results]
             except psycopg.Error as e:
                 logger.error("PostgreSQL query execution failed: %s", e)
                 raise PostgresConnectionError(f"Query execution failed: {e}") from e
@@ -491,14 +484,13 @@ class PostgresConnection(BaseConnection):
             PostgresConnectionError: If query execution fails
         """
         # Convert parameters to dict if needed for execute_query compatibility
-        if isinstance(parameters, (tuple, list)):
+        if isinstance(parameters, tuple | list):
             # For positional parameters, we'll use the execute method directly
             try:
-                async with self.acquire_connection() as conn:
-                    async with conn.cursor() as cur:
-                        await cur.execute(query, parameters)
-                        result = await cur.fetchone()
-                        return dict(result) if result else None
+                async with self.acquire_connection() as conn, conn.cursor() as cur:
+                    await cur.execute(query, parameters)
+                    result = await cur.fetchone()
+                    return dict(result) if result else None
             except psycopg.Error as e:
                 logger.error("PostgreSQL query execution failed: %s", e)
                 raise PostgresConnectionError(f"Query execution failed: {e}") from e

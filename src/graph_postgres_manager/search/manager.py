@@ -235,7 +235,7 @@ class SearchManager:
         
         # Combine scores for duplicates
         final_results = []
-        for result_id, group in grouped.items():
+        for _result_id, group in grouped.items():
             if len(group) == 1:
                 final_results.append(group[0])
             else:

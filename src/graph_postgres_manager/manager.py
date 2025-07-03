@@ -1,6 +1,7 @@
 """Main manager class for graph_postgres_manager."""
 
 import asyncio
+import contextlib
 import logging
 import time
 from datetime import datetime
@@ -16,7 +17,13 @@ from graph_postgres_manager.exceptions import (
 from graph_postgres_manager.intent import IntentManager
 from graph_postgres_manager.metadata import IndexManager, SchemaManager, StatsCollector
 from graph_postgres_manager.models import EdgeType, HealthStatus
-from graph_postgres_manager.search import SearchManager, SearchQuery, SearchResult
+from graph_postgres_manager.search import (
+    SearchFilter,
+    SearchManager,
+    SearchQuery,
+    SearchResult,
+    SearchType,
+)
 from graph_postgres_manager.transactions import TransactionManager
 
 logger = logging.getLogger(__name__)
@@ -114,10 +121,8 @@ class GraphPostgresManager:
         # Cancel health check task
         if self._health_check_task:
             self._health_check_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._health_check_task
-            except asyncio.CancelledError:
-                pass
         
         # Disconnect from databases
         await asyncio.gather(
@@ -670,11 +675,8 @@ class GraphPostgresManager:
         ]
         
         for query in indexes:
-            try:
+            with contextlib.suppress(Exception):
                 await self._neo4j_conn.execute_query(query)
-            except Exception:
-                # Index might already exist, continue
-                pass
     
     # Intent Management
     
@@ -840,7 +842,6 @@ class GraphPostgresManager:
         
         # Build SearchQuery if string provided
         if isinstance(query, str):
-            from graph_postgres_manager.search import SearchFilter, SearchType
             
             # Determine search types based on parameters
             search_types = []

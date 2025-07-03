@@ -50,11 +50,6 @@ class IntentManager:
         """
         
         # Check if pgvector extension is available
-        check_pgvector = """
-        SELECT EXISTS (
-            SELECT 1 FROM pg_extension WHERE extname = 'vector'
-        );
-        """
         
         async with self.postgres.get_connection() as conn:
             # Create intent_ast_map table
@@ -106,7 +101,7 @@ class IntentManager:
         if intent_vector:
             if len(intent_vector) != 768:
                 raise ValidationError("intent_vector must have exactly 768 dimensions")
-            if not all(isinstance(x, (int, float)) for x in intent_vector):
+            if not all(isinstance(x, int | float) for x in intent_vector):
                 raise ValidationError("intent_vector must contain only numeric values")
         
         try:
@@ -145,8 +140,8 @@ class IntentManager:
                             mappings_created.append({
                                 "id": str(result[0]),
                                 "ast_node_id": ast_node_id,
-                                "created_at": result[1].isoformat() if hasattr(result[1], 'isoformat') else str(result[1]),
-                                "updated_at": result[2].isoformat() if hasattr(result[2], 'isoformat') else str(result[2])
+                                "created_at": result[1].isoformat() if hasattr(result[1], "isoformat") else str(result[1]),
+                                "updated_at": result[2].isoformat() if hasattr(result[2], "isoformat") else str(result[2])
                             })
                     
                     # Store vector if provided (pgvector is out of scope)
@@ -222,9 +217,9 @@ class IntentManager:
     
     async def search_ast_by_intent_vector(
         self,
-        intent_vector: list[float],
-        limit: int = 10,
-        threshold: float = 0.7
+        intent_vector: list[float],  # noqa: ARG002
+        limit: int = 10,  # noqa: ARG002
+        threshold: float = 0.7,  # noqa: ARG002
     ) -> list[dict[str, Any]]:
         """Search for AST nodes using intent vector similarity.
         
@@ -271,7 +266,7 @@ class IntentManager:
             async with self.postgres.get_connection() as conn:
                 result = await conn.execute(query, *params)
                 # Extract row count from result string
-                count = int(result.split()[-1]) if result else 0
+                return int(result.split()[-1]) if result else 0
                 
                 # Vector removal disabled (pgvector is out of scope)
                 # if not ast_node_id and count > 0:
@@ -280,7 +275,6 @@ class IntentManager:
                 #         intent_id
                 #     )
                 
-                return count
                 
         except Exception as e:
             error_msg = f"Failed to remove intent mapping: {e}"

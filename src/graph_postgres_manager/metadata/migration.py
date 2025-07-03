@@ -106,9 +106,7 @@ class MigrationManager:
         """Check if a filename follows migration naming convention."""
         # Expected format: XXX_description.sql where XXX is version number
         parts = filename.split("_", 1)
-        if len(parts) >= 2 and parts[0].isdigit():
-            return True
-        return False
+        return bool(len(parts) >= 2 and parts[0].isdigit())
     
     def _extract_version(self, filename: str) -> str:
         """Extract version from migration filename."""
