@@ -98,7 +98,7 @@ class IndexManager:
         return indexes
     
     async def analyze_index_usage(self, schema_name: str = "public", 
-                                days_back: int = 30) -> dict[str, Any]:
+                                _days_back: int = 30) -> dict[str, Any]:
         """Analyze index usage patterns.
         
         Args:
@@ -281,7 +281,7 @@ class IndexManager:
                 
         return suggestions
     
-    async def _get_slow_queries(self, schema_name: str) -> list[dict[str, Any]]:
+    async def _get_slow_queries(self, _schema_name: str) -> list[dict[str, Any]]:
         """Get slow queries from pg_stat_statements."""
         query = """
         SELECT 
@@ -304,7 +304,9 @@ class IndexManager:
         except Exception:
             return []
     
-    async def _analyze_query_for_indexes(self, query_info: dict[str, Any]) -> dict[str, Any] | None:
+    async def _analyze_query_for_indexes(
+        self, _query_info: dict[str, Any]
+    ) -> dict[str, Any] | None:
         """Analyze a query to suggest indexes."""
         # This is a simplified implementation
         # A full implementation would parse the query and analyze the execution plan
@@ -337,7 +339,8 @@ class IndexManager:
                 ind_atts.reltuples,
                 ind_atts.relpages,
                 ind_atts.index_oid,
-                (SELECT SUM(stawidth) FROM pg_statistic WHERE starelid = ind_atts.index_oid) AS index_size
+                (SELECT SUM(stawidth) FROM pg_statistic 
+                 WHERE starelid = ind_atts.index_oid) AS index_size
             FROM btree_index_atts AS ind_atts
             GROUP BY 1,2,3,4,5,6
         )
@@ -414,8 +417,10 @@ class IndexManager:
                             "column": column_info["column"],
                             "reason": "frequently_filtered_column",
                             "filter_count": column_info["filter_count"],
-                            "create_statement": f"CREATE INDEX idx_{table_name}_{column_info['column']} "
-                                              f"ON {schema_name}.{table_name} ({column_info['column']})"
+                            "create_statement": (
+                                f"CREATE INDEX idx_{table_name}_{column_info['column']} "
+                                f"ON {schema_name}.{table_name} ({column_info['column']})"
+                            )
                         })
         
         # Sort suggestions by potential impact
@@ -423,16 +428,14 @@ class IndexManager:
         
         return suggestions[:10]  # Return top 10 suggestions
     
-    async def _analyze_workload_patterns(self, schema_name: str) -> list[dict[str, Any]]:
+    async def _analyze_workload_patterns(self, _schema_name: str) -> list[dict[str, Any]]:
         """Analyze query workload patterns for index suggestions."""
-        suggestions = []
-        
         # This would analyze pg_stat_statements or query logs
         # For now, return empty list as this requires more complex implementation
-        return suggestions
+        return []
     
-    async def _get_frequently_filtered_columns(self, schema_name: str, 
-                                             table_name: str) -> list[dict[str, Any]]:
+    async def _get_frequently_filtered_columns(self, _schema_name: str, 
+                                             _table_name: str) -> list[dict[str, Any]]:
         """Get columns that are frequently used in WHERE clauses."""
         # This is a simplified implementation
         # A full implementation would analyze query patterns
@@ -532,7 +535,10 @@ class IndexManager:
         SET updated_at = %s
         """
         
-        definition = f"CREATE INDEX {index_name} ON {schema_name}.{table_name} ({', '.join(columns)})"
+        definition = (
+            f"CREATE INDEX {index_name} ON {schema_name}.{table_name} "
+            f"({', '.join(columns)})"
+        )
         now = datetime.now()
         
         await self.connection.execute(

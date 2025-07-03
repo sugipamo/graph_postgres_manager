@@ -67,7 +67,7 @@ async def clean_postgres(manager: GraphPostgresManager) -> AsyncGenerator[None, 
     yield
     
     # テスト後のクリーンアップ
-    await manager.postgres.execute_query("TRUNCATE TABLE IF EXISTS graph_data.metadata CASCADE")
+    await manager.postgres.execute_query("TRUNCATE TABLE graph_data.metadata CASCADE")
 
 
 @pytest_asyncio.fixture

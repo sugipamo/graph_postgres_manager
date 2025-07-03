@@ -12,7 +12,7 @@ class TestDataOperations:
     """データ操作のテストクラス"""
     
     @pytest.mark.asyncio
-    async def test_neo4j_node_crud(self, manager: GraphPostgresManager, clean_neo4j):
+    async def test_neo4j_node_crud(self, manager: GraphPostgresManager, _clean_neo4j):
         """Neo4jのノードCRUD操作テスト"""
         # Create
         create_query = """
@@ -20,7 +20,7 @@ class TestDataOperations:
         RETURN n
         """
         result = await manager.neo4j_connection.execute_query(
-            create_query, name="Alice", age=30
+            create_query, {"name": "Alice", "age": 30}
         )
         assert len(result) == 1
         assert result[0]["n"]["name"] == "Alice"
@@ -28,7 +28,7 @@ class TestDataOperations:
         
         # Read
         read_query = "MATCH (n:Person {name: $name}) RETURN n"
-        result = await manager.neo4j_connection.execute_query(read_query, name="Alice")
+        result = await manager.neo4j_connection.execute_query(read_query, {"name": "Alice"})
         assert len(result) == 1
         assert result[0]["n"]["name"] == "Alice"
         
@@ -39,20 +39,20 @@ class TestDataOperations:
         RETURN n
         """
         result = await manager.neo4j_connection.execute_query(
-            update_query, name="Alice", new_age=31
+            update_query, {"name": "Alice", "new_age": 31}
         )
         assert result[0]["n"]["age"] == 31
         
         # Delete
         delete_query = "MATCH (n:Person {name: $name}) DELETE n"
-        await manager.neo4j_connection.execute_query(delete_query, name="Alice")
+        await manager.neo4j_connection.execute_query(delete_query, {"name": "Alice"})
         
         # Verify deletion
-        result = await manager.neo4j_connection.execute_query(read_query, name="Alice")
+        result = await manager.neo4j_connection.execute_query(read_query, {"name": "Alice"})
         assert len(result) == 0
     
     @pytest.mark.asyncio
-    async def test_neo4j_relationship_crud(self, manager: GraphPostgresManager, clean_neo4j):
+    async def test_neo4j_relationship_crud(self, manager: GraphPostgresManager, _clean_neo4j):
         """Neo4jのリレーションシップCRUD操作テスト"""
         # Create nodes and relationship
         create_query = """
@@ -95,50 +95,52 @@ class TestDataOperations:
         assert len(result) == 0
     
     @pytest.mark.asyncio
-    async def test_postgres_crud(self, manager: GraphPostgresManager, clean_postgres):
+    async def test_postgres_crud(self, manager: GraphPostgresManager, _clean_postgres):
         """PostgreSQLのCRUD操作テスト"""
         # Create
         insert_query = """
         INSERT INTO graph_data.metadata (key, value)
-        VALUES ($1, $2)
+        VALUES (%(key)s, %(value)s)
         RETURNING id, key, value, created_at
         """
         test_data = {"type": "config", "version": "1.0.0"}
         result = await manager.postgres_connection.execute_query(
-            insert_query, "test_config", json.dumps(test_data)
+            insert_query, {"key": "test_config", "value": json.dumps(test_data)}
         )
         assert len(result) == 1
         record_id = result[0]["id"]
         assert result[0]["key"] == "test_config"
         
         # Read
-        select_query = "SELECT * FROM graph_data.metadata WHERE key = $1"
+        select_query = "SELECT * FROM graph_data.metadata WHERE key = %(key)s"
         result = await manager.postgres_connection.execute_query(
-            select_query, "test_config"
+            select_query, {"key": "test_config"}
         )
         assert len(result) == 1
-        assert json.loads(result[0]["value"]) == test_data
+        # PostgreSQL JSONB columns are automatically parsed to dict
+        assert result[0]["value"] == test_data
         
         # Update
         update_query = """
         UPDATE graph_data.metadata
-        SET value = $2, updated_at = CURRENT_TIMESTAMP
-        WHERE key = $1
+        SET value = %(value)s, updated_at = CURRENT_TIMESTAMP
+        WHERE key = %(key)s
         RETURNING *
         """
         updated_data = {"type": "config", "version": "2.0.0"}
         result = await manager.postgres_connection.execute_query(
-            update_query, "test_config", json.dumps(updated_data)
+            update_query, {"key": "test_config", "value": json.dumps(updated_data)}
         )
-        assert json.loads(result[0]["value"]) == updated_data
+        # PostgreSQL JSONB columns are automatically parsed to dict
+        assert result[0]["value"] == updated_data
         
         # Delete
-        delete_query = "DELETE FROM graph_data.metadata WHERE key = $1"
-        await manager.postgres_connection.execute_query(delete_query, "test_config")
+        delete_query = "DELETE FROM graph_data.metadata WHERE key = %(key)s"
+        await manager.postgres_connection.execute_query(delete_query, {"key": "test_config"})
         
         # Verify deletion
         result = await manager.postgres_connection.execute_query(
-            select_query, "test_config"
+            select_query, {"key": "test_config"}
         )
         assert len(result) == 0
     
@@ -168,24 +170,22 @@ class TestDataOperations:
         assert count_result[0]["count"] == 100
     
     @pytest.mark.asyncio
-    async def test_batch_insert_postgres(self, manager: GraphPostgresManager, clean_postgres):
+    async def test_batch_insert_postgres(self, manager: GraphPostgresManager, _clean_postgres):
         """PostgreSQLのバッチインサートテスト"""
         # データを準備
         data = [
-            (f"key_{i}", json.dumps({"index": i, "data": f"value_{i}"}))
+            {"key": f"key_{i}", "value": json.dumps({"index": i, "data": f"value_{i}"})}
             for i in range(100)
         ]
         
         # バッチインサート
+        query = "INSERT INTO graph_data.metadata (key, value) VALUES (%(key)s, %(value)s)"
         result = await manager.batch_insert_postgres(
-            table="graph_data.metadata",
-            columns=["key", "value"],
-            data=data,
-            batch_size=25
+            query=query,
+            data=data
         )
         
-        assert result["total_inserted"] == 100
-        assert result["batches_processed"] == 4  # 100 / 25 = 4
+        assert result == 100  # Total number of inserted rows
         
         # 確認
         count_result = await manager.postgres_connection.execute_query(

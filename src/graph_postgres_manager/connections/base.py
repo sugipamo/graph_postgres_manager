@@ -90,8 +90,8 @@ class BaseConnection(ABC):
                 if attempt < self.config.max_retry_attempts:
                     delay = self._calculate_backoff_delay(attempt)
                     logger.warning(
-                        f"Connection attempt {attempt + 1} failed: {e}. "
-                        f"Retrying in {delay}s..."
+                        "Connection attempt %d failed: %s. Retrying in %ds...",
+                        attempt + 1, e, delay
                     )
                     await asyncio.sleep(delay)
                 else:
@@ -111,11 +111,10 @@ class BaseConnection(ABC):
         Returns:
             Delay in seconds
         """
-        delay = min(
+        return min(
             self.config.retry_backoff_factor ** attempt,
             self.config.retry_max_delay
         )
-        return delay
     
     def _open_circuit_breaker(self) -> None:
         """Open circuit breaker after consecutive failures."""
@@ -159,8 +158,8 @@ class BaseConnection(ABC):
         
         try:
             return await asyncio.wait_for(coro, timeout=timeout)
-        except TimeoutError:
-            raise OperationTimeoutError(f"Operation timed out after {timeout} seconds")
+        except TimeoutError as e:
+            raise OperationTimeoutError(f"Operation timed out after {timeout} seconds") from e
     
     @asynccontextmanager
     async def acquire_connection(self) -> AsyncIterator[Any]:

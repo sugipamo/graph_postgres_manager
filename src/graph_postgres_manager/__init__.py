@@ -17,7 +17,13 @@ from graph_postgres_manager.exceptions import (
 from graph_postgres_manager.intent import IntentManager, IntentMapping, IntentVector
 from graph_postgres_manager.manager import GraphPostgresManager
 from graph_postgres_manager.models import ConnectionState, HealthStatus
-from graph_postgres_manager.search import SearchFilter, SearchManager, SearchQuery, SearchResult, SearchType
+from graph_postgres_manager.search import (
+    SearchFilter,
+    SearchManager,
+    SearchQuery,
+    SearchResult,
+    SearchType,
+)
 
 __version__ = "0.1.0"
 

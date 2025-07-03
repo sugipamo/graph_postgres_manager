@@ -67,8 +67,8 @@ class TestTransactionIntegration:
             
             # Create record in PostgreSQL
             await tx.postgres_execute(
-                "INSERT INTO transaction_test (node_id) VALUES ($1)",
-                [node_id]
+                "INSERT INTO transaction_test (node_id) VALUES (%(node_id)s)",
+                {"node_id": node_id}
             )
         
         # Verify both operations were committed
@@ -101,8 +101,8 @@ class TestTransactionIntegration:
                 
                 # Create record in PostgreSQL
                 await tx.postgres_execute(
-                    "INSERT INTO transaction_test (node_id) VALUES ($1)",
-                    [node_id]
+                    "INSERT INTO transaction_test (node_id) VALUES (%(node_id)s)",
+                    {"node_id": node_id}
                 )
                 
                 # Force an error
@@ -135,8 +135,8 @@ class TestTransactionIntegration:
             
             # Create record in PostgreSQL
             await tx.postgres_execute(
-                "INSERT INTO transaction_test (node_id) VALUES ($1)",
-                [node_id]
+                "INSERT INTO transaction_test (node_id) VALUES (%(node_id)s)",
+                {"node_id": node_id}
             )
             
             # Manually rollback
@@ -171,8 +171,8 @@ class TestTransactionIntegration:
                 )
                 
                 await tx.postgres_execute(
-                    "INSERT INTO transaction_test (node_id) VALUES ($1)",
-                    [node_id]
+                    "INSERT INTO transaction_test (node_id) VALUES (%(node_id)s)",
+                    {"node_id": node_id}
                 )
         
         # Run multiple transactions concurrently
@@ -208,8 +208,8 @@ class TestTransactionIntegration:
                 
                 # This should not execute due to timeout
                 await tx.postgres_execute(
-                    "INSERT INTO transaction_test (node_id) VALUES ($1)",
-                    [node_id]
+                    "INSERT INTO transaction_test (node_id) VALUES (%(node_id)s)",
+                    {"node_id": node_id}
                 )
         
         # Verify transaction was rolled back
@@ -236,8 +236,8 @@ class TestTransactionIntegration:
             # Create corresponding records in PostgreSQL
             for i in range(batch_size):
                 await tx.postgres_execute(
-                    "INSERT INTO transaction_test (node_id) VALUES ($1)",
-                    [f"{base_node_id}-{i}"]
+                    "INSERT INTO transaction_test (node_id) VALUES (%(node_id)s)",
+                    {"node_id": f"{base_node_id}-{i}"}
                 )
         
         # Verify all operations were committed
@@ -272,8 +272,8 @@ class TestTransactionIntegration:
             
             # Create records in PostgreSQL
             await tx.postgres_execute(
-                "INSERT INTO transaction_test (node_id) VALUES ($1), ($2)",
-                [user_id, post_id]
+                "INSERT INTO transaction_test (node_id) VALUES (%(user_id)s), (%(post_id)s)",
+                {"user_id": user_id, "post_id": post_id}
             )
         
         # Verify nodes and relationship were created

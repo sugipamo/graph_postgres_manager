@@ -61,7 +61,7 @@ class SearchManager:
         all_results = []
         for result in results:
             if isinstance(result, Exception):
-                logger.error(f"Search error: {result}")
+                logger.error("Search error: %s", result)
                 continue
             all_results.extend(result)
         
@@ -83,7 +83,10 @@ class SearchManager:
         # Process results
         graph_results = results[0] if not isinstance(results[0], Exception) else []
         text_results = results[1] if not isinstance(results[1], Exception) else []
-        vector_results = results[2] if len(results) > 2 and not isinstance(results[2], Exception) else []
+        vector_results = (
+            results[2] if len(results) > 2 and not isinstance(results[2], Exception) 
+            else []
+        )
         
         # Combine and rank
         all_results = []
@@ -117,7 +120,7 @@ class SearchManager:
                 for r in results
             ]
         except Exception as e:
-            logger.error(f"Graph search error: {e}")
+            logger.error("Graph search error: %s", e)
             raise DataOperationError(f"Graph search failed: {e}") from e
     
     async def _vector_search(self, query: SearchQuery) -> list[SearchResult]:
@@ -146,7 +149,7 @@ class SearchManager:
                 for r in results
             ]
         except Exception as e:
-            logger.error(f"Vector search error: {e}")
+            logger.error("Vector search error: %s", e)
             raise DataOperationError(f"Vector search failed: {e}") from e
     
     async def _text_search(self, query: SearchQuery) -> list[SearchResult]:
@@ -171,12 +174,14 @@ class SearchManager:
                 for row in rows
             ]
         except Exception as e:
-            logger.error(f"Text search error: {e}")
+            logger.error("Text search error: %s", e)
             raise DataOperationError(f"Text search failed: {e}") from e
     
     def _build_graph_query(self, query: SearchQuery) -> str:
         """Build Cypher query for graph search."""
-        conditions = ["toLower(n.value) CONTAINS $search_query OR toLower(n.id) CONTAINS $search_query"]
+        conditions = [
+            "toLower(n.value) CONTAINS $search_query OR toLower(n.id) CONTAINS $search_query"
+        ]
         
         if query.filters.node_types:
             types = ", ".join(f"'{t}'" for t in query.filters.node_types)
@@ -273,7 +278,7 @@ class SearchManager:
         
         return min(1.0, score)
     
-    def _calculate_text_score(self, result: dict[str, Any], query: SearchQuery) -> float:
+    def _calculate_text_score(self, result: dict[str, Any], _query: SearchQuery) -> float:
         """Calculate relevance score for text search result."""
         # PostgreSQL ts_rank provides a score, normalize it
         rank = result.get("rank", 0.0)

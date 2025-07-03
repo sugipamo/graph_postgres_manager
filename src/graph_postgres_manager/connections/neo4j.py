@@ -13,9 +13,9 @@ from neo4j.exceptions import (
 )
 
 from graph_postgres_manager.config import ConnectionConfig
+from graph_postgres_manager.connections.base import BaseConnection
 from graph_postgres_manager.exceptions import Neo4jConnectionError
 from graph_postgres_manager.models.types import ConnectionState
-from graph_postgres_manager.connections.base import BaseConnection
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ class Neo4jConnection(BaseConnection):
         """Establish connection to Neo4j."""
         try:
             self._state = ConnectionState.CONNECTING
-            logger.info(f"Connecting to Neo4j at {self.config.neo4j_uri}")
+            logger.info("Connecting to Neo4j at %s", self.config.neo4j_uri)
             
             self._driver = AsyncGraphDatabase.driver(
                 self.config.neo4j_uri,
@@ -55,17 +55,17 @@ class Neo4jConnection(BaseConnection):
             
         except ServiceUnavailable as e:
             self._state = ConnectionState.FAILED
-            logger.error(f"Neo4j service unavailable: {e}")
+            logger.error("Neo4j service unavailable: %s", e)
             raise Neo4jConnectionError(f"Failed to connect to Neo4j: {e}") from e
         except Exception as e:
             self._state = ConnectionState.FAILED
             error_msg = str(e)
             if "authentication" in error_msg.lower() or "unauthorized" in error_msg.lower():
-                logger.error(f"Neo4j authentication failed: {e}")
+                logger.error("Neo4j authentication failed: %s", e)
                 # Add delay to prevent rate limiting
                 await asyncio.sleep(1)
             else:
-                logger.error(f"Unexpected error connecting to Neo4j: {e}")
+                logger.error("Unexpected error connecting to Neo4j: %s", e)
             raise Neo4jConnectionError(f"Unexpected error: {e}") from e
     
     async def disconnect(self) -> None:
@@ -79,7 +79,7 @@ class Neo4jConnection(BaseConnection):
                 self._state = ConnectionState.CLOSED
                 logger.info("Successfully disconnected from Neo4j")
             except Exception as e:
-                logger.error(f"Error disconnecting from Neo4j: {e}")
+                logger.error("Error disconnecting from Neo4j: %s", e)
                 self._state = ConnectionState.FAILED
     
     async def health_check(self) -> tuple[bool, float]:
@@ -102,12 +102,12 @@ class Neo4jConnection(BaseConnection):
             return True, latency_ms
             
         except (ServiceUnavailable, SessionExpired) as e:
-            logger.warning(f"Neo4j health check failed: {e}")
+            logger.warning("Neo4j health check failed: %s", e)
             if self.config.enable_auto_reconnect:
                 self._state = ConnectionState.RECONNECTING
             return False, 0.0
         except Exception as e:
-            logger.error(f"Unexpected error during Neo4j health check: {e}")
+            logger.error("Unexpected error during Neo4j health check: %s", e)
             return False, 0.0
     
     async def execute_query(
@@ -134,11 +134,10 @@ class Neo4jConnection(BaseConnection):
         try:
             async with self._driver.session(database=database) as session:
                 result = await session.run(query, parameters or {})
-                records = [record.data() async for record in result]
-                return records
+                return [record.data() async for record in result]
                 
         except (ServiceUnavailable, SessionExpired) as e:
-            logger.error(f"Connection error during query execution: {e}")
+            logger.error("Connection error during query execution: %s", e)
             if self.config.enable_auto_reconnect:
                 await self.connect_with_retry()
                 # Retry once after reconnection
@@ -146,7 +145,7 @@ class Neo4jConnection(BaseConnection):
             raise Neo4jConnectionError(f"Connection error: {e}") from e
             
         except Neo4jError as e:
-            logger.error(f"Neo4j error during query execution: {e}")
+            logger.error("Neo4j error during query execution: %s", e)
             raise Neo4jConnectionError(f"Query execution failed: {e}") from e
     
     async def execute_transaction(
@@ -177,7 +176,7 @@ class Neo4jConnection(BaseConnection):
                     **kwargs
                 )
         except Exception as e:
-            logger.error(f"Transaction execution failed: {e}")
+            logger.error("Transaction execution failed: %s", e)
             raise Neo4jConnectionError(f"Transaction failed: {e}") from e
     
     async def batch_insert(
@@ -218,15 +217,16 @@ class Neo4jConnection(BaseConnection):
                     total_inserted += summary.counters.nodes_created
                     
                     logger.debug(
-                        f"Inserted batch {i // batch_size + 1}, "
-                        f"records: {len(batch)}"
+                        "Inserted batch %d, records: %d",
+                        i // batch_size + 1,
+                        len(batch)
                     )
             
-            logger.info(f"Batch insert completed. Total records: {total_inserted}")
+            logger.info("Batch insert completed. Total records: %d", total_inserted)
             return total_inserted
             
         except Exception as e:
-            logger.error(f"Batch insert failed: {e}")
+            logger.error("Batch insert failed: %s", e)
             raise Neo4jConnectionError(f"Batch insert failed: {e}") from e
     
     @property
@@ -253,7 +253,7 @@ class Neo4jConnection(BaseConnection):
             tx = await session.begin_transaction()
             return (session, tx)
         except Exception as e:
-            logger.error(f"Failed to begin transaction: {e}")
+            logger.error("Failed to begin transaction: %s", e)
             raise Neo4jConnectionError(f"Failed to begin transaction: {e}") from e
     
     async def commit_transaction(self, transaction: Any) -> None:
@@ -273,7 +273,7 @@ class Neo4jConnection(BaseConnection):
             await tx.commit()
             await session.close()
         except Exception as e:
-            logger.error(f"Failed to commit transaction: {e}")
+            logger.error("Failed to commit transaction: %s", e)
             raise Neo4jConnectionError(f"Failed to commit transaction: {e}") from e
     
     async def rollback_transaction(self, transaction: Any) -> None:
@@ -293,10 +293,10 @@ class Neo4jConnection(BaseConnection):
             await tx.rollback()
             await session.close()
         except Exception as e:
-            logger.error(f"Failed to rollback transaction: {e}")
+            logger.error("Failed to rollback transaction: %s", e)
             raise Neo4jConnectionError(f"Failed to rollback transaction: {e}") from e
     
-    async def prepare_transaction(self, transaction: Any) -> None:
+    async def prepare_transaction(self, _transaction: Any) -> None:
         """Prepare transaction for 2-phase commit (Neo4j doesn't support this natively).
         
         Args:

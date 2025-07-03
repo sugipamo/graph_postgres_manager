@@ -242,10 +242,10 @@ class StatsCollector:
         quoted_pattern = r'"([^"]+)"'
         
         # Pattern for unquoted identifiers
-        unquoted_pattern = r'([a-zA-Z_][a-zA-Z0-9_]*)'
+        unquoted_pattern = r"([a-zA-Z_][a-zA-Z0-9_]*)"
         
         # Combined pattern: quoted or unquoted identifiers
-        identifier_pattern = f'(?:{quoted_pattern}|{unquoted_pattern})'
+        identifier_pattern = f"(?:{quoted_pattern}|{unquoted_pattern})"
         
         # FROM clause
         from_pattern = rf"FROM\s+(?:[\w\.]+\.)?{identifier_pattern}"
@@ -265,7 +265,10 @@ class StatsCollector:
                 tables.append(table)
         
         # UPDATE/INSERT/DELETE
-        update_pattern = rf"(?:UPDATE|INSERT\s+INTO|DELETE\s+FROM)\s+(?:[\w\.]+\.)?{identifier_pattern}"
+        update_pattern = (
+            rf"(?:UPDATE|INSERT\s+INTO|DELETE\s+FROM)\s+"
+            rf"(?:[\w\.]+\.)?{identifier_pattern}"
+        )
         matches = re.finditer(update_pattern, query, re.IGNORECASE)
         for m in matches:
             table = m.group(1) or m.group(2)
@@ -284,11 +287,19 @@ class StatsCollector:
         VALUES (%s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (query_hash) DO UPDATE SET
             execution_count = query_patterns.execution_count + EXCLUDED.execution_count,
-            total_execution_time_ms = query_patterns.total_execution_time_ms + EXCLUDED.total_execution_time_ms,
-            avg_execution_time_ms = (query_patterns.total_execution_time_ms + EXCLUDED.total_execution_time_ms) / 
-                                   (query_patterns.execution_count + EXCLUDED.execution_count),
-            min_execution_time_ms = LEAST(query_patterns.min_execution_time_ms, EXCLUDED.min_execution_time_ms),
-            max_execution_time_ms = GREATEST(query_patterns.max_execution_time_ms, EXCLUDED.max_execution_time_ms),
+            total_execution_time_ms = (
+                query_patterns.total_execution_time_ms + EXCLUDED.total_execution_time_ms
+            ),
+            avg_execution_time_ms = (
+                (query_patterns.total_execution_time_ms + EXCLUDED.total_execution_time_ms) / 
+                (query_patterns.execution_count + EXCLUDED.execution_count)
+            ),
+            min_execution_time_ms = LEAST(
+                query_patterns.min_execution_time_ms, EXCLUDED.min_execution_time_ms
+            ),
+            max_execution_time_ms = GREATEST(
+                query_patterns.max_execution_time_ms, EXCLUDED.max_execution_time_ms
+            ),
             last_executed = CURRENT_TIMESTAMP,
             updated_at = CURRENT_TIMESTAMP
         """
@@ -349,7 +360,9 @@ class StatsCollector:
                 "table_size": self._format_bytes(stats.table_size),
                 "indexes_size": self._format_bytes(stats.indexes_size),
                 "dead_tuples": stats.dead_tuple_count,
-                "bloat_ratio": stats.dead_tuple_count / stats.row_count if stats.row_count > 0 else 0,
+                "bloat_ratio": (
+                    stats.dead_tuple_count / stats.row_count if stats.row_count > 0 else 0
+                ),
                 "last_vacuum": stats.last_vacuum.isoformat() if stats.last_vacuum else None,
                 "last_analyze": stats.last_analyze.isoformat() if stats.last_analyze else None
             }
@@ -400,13 +413,18 @@ class StatsCollector:
             "primary_keys": result["primary_keys"]
         }
     
-    def _get_top_queries_by_time(self, patterns: list[QueryPattern], limit: int = 10) -> list[dict[str, Any]]:
+    def _get_top_queries_by_time(
+        self, patterns: list[QueryPattern], limit: int = 10
+    ) -> list[dict[str, Any]]:
         """Get top queries by total execution time."""
         sorted_patterns = sorted(patterns, key=lambda p: p.total_execution_time_ms, reverse=True)
         
         return [
             {
-                "query_template": p.query_template[:100] + "..." if len(p.query_template) > 100 else p.query_template,
+                "query_template": (
+                    p.query_template[:100] + "..." 
+                    if len(p.query_template) > 100 else p.query_template
+                ),
                 "total_time_ms": p.total_execution_time_ms,
                 "avg_time_ms": p.avg_execution_time_ms,
                 "execution_count": p.execution_count,
@@ -415,13 +433,18 @@ class StatsCollector:
             for p in sorted_patterns[:limit]
         ]
     
-    def _get_top_queries_by_count(self, patterns: list[QueryPattern], limit: int = 10) -> list[dict[str, Any]]:
+    def _get_top_queries_by_count(
+        self, patterns: list[QueryPattern], limit: int = 10
+    ) -> list[dict[str, Any]]:
         """Get top queries by execution count."""
         sorted_patterns = sorted(patterns, key=lambda p: p.execution_count, reverse=True)
         
         return [
             {
-                "query_template": p.query_template[:100] + "..." if len(p.query_template) > 100 else p.query_template,
+                "query_template": (
+                    p.query_template[:100] + "..." 
+                    if len(p.query_template) > 100 else p.query_template
+                ),
                 "execution_count": p.execution_count,
                 "avg_time_ms": p.avg_execution_time_ms,
                 "tables": p.tables_referenced
@@ -429,13 +452,18 @@ class StatsCollector:
             for p in sorted_patterns[:limit]
         ]
     
-    def _get_slowest_queries(self, patterns: list[QueryPattern], limit: int = 10) -> list[dict[str, Any]]:
+    def _get_slowest_queries(
+        self, patterns: list[QueryPattern], limit: int = 10
+    ) -> list[dict[str, Any]]:
         """Get slowest queries by average execution time."""
         sorted_patterns = sorted(patterns, key=lambda p: p.avg_execution_time_ms, reverse=True)
         
         return [
             {
-                "query_template": p.query_template[:100] + "..." if len(p.query_template) > 100 else p.query_template,
+                "query_template": (
+                    p.query_template[:100] + "..." 
+                    if len(p.query_template) > 100 else p.query_template
+                ),
                 "avg_time_ms": p.avg_execution_time_ms,
                 "max_time_ms": p.max_execution_time_ms,
                 "execution_count": p.execution_count,

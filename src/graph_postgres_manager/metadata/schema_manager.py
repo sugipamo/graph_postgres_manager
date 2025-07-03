@@ -181,7 +181,9 @@ class SchemaManager:
         )
         return [dict(row) for row in result]
     
-    async def _get_table_constraints(self, schema_name: str, table_name: str) -> list[dict[str, Any]]:
+    async def _get_table_constraints(
+        self, schema_name: str, table_name: str
+    ) -> list[dict[str, Any]]:
         """Get constraint information for a table."""
         query = """
         SELECT 
@@ -234,7 +236,9 @@ class SchemaManager:
         result = await self.connection.fetch_all(query, (schema_name, table_name))
         return [dict(row) for row in result]
     
-    async def _get_table_foreign_keys(self, schema_name: str, table_name: str) -> list[dict[str, Any]]:
+    async def _get_table_foreign_keys(
+        self, schema_name: str, table_name: str
+    ) -> list[dict[str, Any]]:
         """Get foreign key information for a table."""
         query = """
         SELECT 
@@ -305,7 +309,8 @@ class SchemaManager:
         changes = []
         
         # Compare current schema with last known state
-        # This is a simplified version - a full implementation would need more sophisticated comparison
+        # This is a simplified version - a full implementation would need
+        # more sophisticated comparison
         for table_name, table_info in current_schema.items():
             # Check if table is new
             if not any(change["object_name"] == table_name for change in last_changes):

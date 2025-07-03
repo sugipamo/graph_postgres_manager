@@ -1,6 +1,5 @@
 """PostgreSQL connection management."""
 
-import asyncio
 import logging
 import time
 from collections.abc import AsyncIterator
@@ -17,9 +16,9 @@ except ImportError:
 from psycopg.rows import dict_row
 
 from graph_postgres_manager.config import ConnectionConfig
+from graph_postgres_manager.connections.base import BaseConnection
 from graph_postgres_manager.exceptions import PoolExhaustedError, PostgresConnectionError
 from graph_postgres_manager.models.types import ConnectionState
-from graph_postgres_manager.connections.base import BaseConnection
 
 logger = logging.getLogger(__name__)
 
@@ -64,11 +63,11 @@ class PostgresConnection(BaseConnection):
             
         except psycopg.OperationalError as e:
             self._state = ConnectionState.FAILED
-            logger.error(f"PostgreSQL connection failed: {e}")
+            logger.error("PostgreSQL connection failed: %s", e)
             raise PostgresConnectionError(f"Failed to connect to PostgreSQL: {e}") from e
         except Exception as e:
             self._state = ConnectionState.FAILED
-            logger.error(f"Unexpected error connecting to PostgreSQL: {e}")
+            logger.error("Unexpected error connecting to PostgreSQL: %s", e)
             raise PostgresConnectionError(f"Unexpected error: {e}") from e
     
     async def disconnect(self) -> None:
@@ -82,7 +81,7 @@ class PostgresConnection(BaseConnection):
                 self._state = ConnectionState.CLOSED
                 logger.info("Successfully closed PostgreSQL connection pool")
             except Exception as e:
-                logger.error(f"Error closing PostgreSQL pool: {e}")
+                logger.error("Error closing PostgreSQL pool: %s", e)
                 self._state = ConnectionState.FAILED
     
     async def health_check(self) -> tuple[bool, float]:
@@ -106,12 +105,12 @@ class PostgresConnection(BaseConnection):
             return True, latency_ms
             
         except psycopg.OperationalError as e:
-            logger.warning(f"PostgreSQL health check failed: {e}")
+            logger.warning("PostgreSQL health check failed: %s", e)
             if self.config.enable_auto_reconnect:
                 self._state = ConnectionState.RECONNECTING
             return False, 0.0
         except Exception as e:
-            logger.error(f"Unexpected error during PostgreSQL health check: {e}")
+            logger.error("Unexpected error during PostgreSQL health check: %s", e)
             return False, 0.0
     
     @asynccontextmanager
@@ -130,12 +129,12 @@ class PostgresConnection(BaseConnection):
         try:
             async with self._pool.connection() as conn:
                 yield conn
-        except asyncio.TimeoutError:
+        except TimeoutError as e:
             raise PoolExhaustedError(
                 f"Connection pool exhausted (timeout: {self.config.timeout_seconds}s)"
-            )
+            ) from e
         except Exception as e:
-            logger.error(f"Error acquiring connection: {e}")
+            logger.error("Error acquiring connection: %s", e)
             raise PostgresConnectionError(f"Failed to acquire connection: {e}") from e
     
     async def execute_query(
@@ -174,7 +173,7 @@ class PostgresConnection(BaseConnection):
                     return [dict(result)] if result else []
                         
         except psycopg.Error as e:
-            logger.error(f"PostgreSQL query execution failed: {e}")
+            logger.error("PostgreSQL query execution failed: %s", e)
             raise PostgresConnectionError(f"Query execution failed: {e}") from e
     
     async def execute_many(
@@ -219,7 +218,7 @@ class PostgresConnection(BaseConnection):
                     return cur.rowcount or 0
                     
         except psycopg.Error as e:
-            logger.error(f"PostgreSQL executemany failed: {e}")
+            logger.error("PostgreSQL executemany failed: %s", e)
             raise PostgresConnectionError(f"Batch execution failed: {e}") from e
     
     async def execute_transaction(
@@ -245,7 +244,7 @@ class PostgresConnection(BaseConnection):
                     return await transaction_func(conn, **kwargs)
                     
         except Exception as e:
-            logger.error(f"Transaction execution failed: {e}")
+            logger.error("Transaction execution failed: %s", e)
             raise PostgresConnectionError(f"Transaction failed: {e}") from e
     
     async def create_table_if_not_exists(
@@ -269,10 +268,10 @@ class PostgresConnection(BaseConnection):
                 async with conn.cursor() as cur:
                     await cur.execute(query)
                     
-            logger.info(f"Ensured table {table_name} exists")
+            logger.info("Ensured table %s exists", table_name)
             
         except psycopg.Error as e:
-            logger.error(f"Table creation failed: {e}")
+            logger.error("Table creation failed: %s", e)
             raise PostgresConnectionError(f"Failed to create table: {e}") from e
     
     @property
@@ -331,7 +330,7 @@ class PostgresConnection(BaseConnection):
                     results = await cur.fetchall()
                     return [dict(row) for row in results]
             except psycopg.Error as e:
-                logger.error(f"PostgreSQL query execution failed: {e}")
+                logger.error("PostgreSQL query execution failed: %s", e)
                 raise PostgresConnectionError(f"Query execution failed: {e}") from e
         else:
             # Use regular execute_query
@@ -353,7 +352,7 @@ class PostgresConnection(BaseConnection):
             await conn.set_autocommit(False)
             return conn
         except Exception as e:
-            logger.error(f"Failed to begin transaction: {e}")
+            logger.error("Failed to begin transaction: %s", e)
             raise PostgresConnectionError(f"Failed to begin transaction: {e}") from e
     
     async def commit_transaction(self, transaction: Any) -> None:
@@ -372,7 +371,7 @@ class PostgresConnection(BaseConnection):
             await transaction.commit()
             await self._pool.putconn(transaction)
         except Exception as e:
-            logger.error(f"Failed to commit transaction: {e}")
+            logger.error("Failed to commit transaction: %s", e)
             raise PostgresConnectionError(f"Failed to commit transaction: {e}") from e
     
     async def rollback_transaction(self, transaction: Any) -> None:
@@ -391,7 +390,7 @@ class PostgresConnection(BaseConnection):
             await transaction.rollback()
             await self._pool.putconn(transaction)
         except Exception as e:
-            logger.error(f"Failed to rollback transaction: {e}")
+            logger.error("Failed to rollback transaction: %s", e)
             raise PostgresConnectionError(f"Failed to rollback transaction: {e}") from e
     
     async def prepare_transaction(self, transaction: Any) -> None:
@@ -417,7 +416,7 @@ class PostgresConnection(BaseConnection):
             # Store the XID with the transaction for later
             transaction._prepared_xid = xid
         except Exception as e:
-            logger.error(f"Failed to prepare transaction: {e}")
+            logger.error("Failed to prepare transaction: %s", e)
             raise PostgresConnectionError(f"Failed to prepare transaction: {e}") from e
     
     async def commit_prepared(self, transaction: Any) -> None:
@@ -441,10 +440,12 @@ class PostgresConnection(BaseConnection):
             
             await self._pool.putconn(transaction)
         except Exception as e:
-            logger.error(f"Failed to commit prepared transaction: {e}")
+            logger.error("Failed to commit prepared transaction: %s", e)
             raise PostgresConnectionError(f"Failed to commit prepared transaction: {e}") from e
     
-    async def fetch_all(self, query: str, parameters: tuple | list | dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    async def fetch_all(
+        self, query: str, parameters: tuple | list | dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         """Execute a query and fetch all results.
         
         Args:
@@ -467,13 +468,15 @@ class PostgresConnection(BaseConnection):
                         results = await cur.fetchall()
                         return [dict(row) for row in results]
             except psycopg.Error as e:
-                logger.error(f"PostgreSQL query execution failed: {e}")
+                logger.error("PostgreSQL query execution failed: %s", e)
                 raise PostgresConnectionError(f"Query execution failed: {e}") from e
         else:
             # For dict parameters or None, use execute_query
             return await self.execute_query(query, parameters, fetch_all=True)
     
-    async def fetch_one(self, query: str, parameters: tuple | list | dict[str, Any] | None = None) -> dict[str, Any] | None:
+    async def fetch_one(
+        self, query: str, parameters: tuple | list | dict[str, Any] | None = None
+    ) -> dict[str, Any] | None:
         """Execute a query and fetch one result.
         
         Args:
@@ -496,7 +499,7 @@ class PostgresConnection(BaseConnection):
                         result = await cur.fetchone()
                         return dict(result) if result else None
             except psycopg.Error as e:
-                logger.error(f"PostgreSQL query execution failed: {e}")
+                logger.error("PostgreSQL query execution failed: %s", e)
                 raise PostgresConnectionError(f"Query execution failed: {e}") from e
         else:
             # For dict parameters or None, use execute_query

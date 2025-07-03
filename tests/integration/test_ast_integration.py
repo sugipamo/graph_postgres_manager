@@ -101,7 +101,8 @@ class TestASTIntegration:
             # Verify relationships
             rel_result = await manager.neo4j.execute_query(
                 """
-                MATCH (n:ASTNode {source_id: 'integration_test'})-[r]->(m:ASTNode {source_id: 'integration_test'})
+                MATCH (n:ASTNode {source_id: 'integration_test'})-[r]->
+                      (m:ASTNode {source_id: 'integration_test'})
                 RETURN TYPE(r) AS type, COUNT(r) AS count
                 ORDER BY type
                 """

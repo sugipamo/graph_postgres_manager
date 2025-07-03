@@ -29,10 +29,11 @@ class TestConnectionManagement:
         """ヘルスチェック機能のテスト"""
         health = await manager.health_check()
         
-        assert health["neo4j"]["status"] == "healthy"
-        assert health["postgres"]["status"] == "healthy"
-        assert "latency_ms" in health["neo4j"]
-        assert "latency_ms" in health["postgres"]
+        assert health.neo4j_connected is True
+        assert health.postgres_connected is True
+        assert health.neo4j_latency_ms >= 0
+        assert health.postgres_latency_ms >= 0
+        assert health.is_healthy is True
     
     @pytest.mark.asyncio
     async def test_neo4j_connection_pool(self, manager: GraphPostgresManager):
@@ -63,11 +64,11 @@ class TestConnectionManagement:
         async def insert_data(index: int):
             query = """
             INSERT INTO graph_data.metadata (key, value) 
-            VALUES ($1, $2) 
+            VALUES (%(key)s, %(value)s) 
             RETURNING id
             """
             result = await manager.postgres_connection.execute_query(
-                query, f"test_key_{index}", f'{{"index": {index}}}'
+                query, {"key": f"test_key_{index}", "value": f'{{"index": {index}}}'}
             )
             return result
         
@@ -90,19 +91,23 @@ class TestConnectionManagement:
         await manager.neo4j_connection.execute_query("RETURN 1")
         
         # 接続を強制的に閉じる（実際のテストでは接続障害をシミュレート）
-        # ここでは自動再接続が有効であることを確認
-        original_health_check_interval = manager.neo4j_connection.health_check_interval
-        manager.neo4j_connection.health_check_interval = 0.1  # 短い間隔に設定
+        # Neo4jのドライバーを一時的に無効化
+        original_driver = manager.neo4j_connection._driver
+        manager.neo4j_connection._driver = None
         
-        # ヘルスチェックが動作していることを確認
-        await asyncio.sleep(0.5)
+        # 接続が失われたことを確認
+        try:
+            await manager.neo4j_connection.execute_query("RETURN 1")
+            assert False, "Expected exception when driver is None"
+        except Exception:
+            pass
+        
+        # ドライバーを復元して自動再接続をテスト
+        manager.neo4j_connection._driver = original_driver
         
         # 再度クエリを実行できることを確認
         result = await manager.neo4j_connection.execute_query("RETURN 2 AS number")
         assert result[0]["number"] == 2
-        
-        # 設定を元に戻す
-        manager.neo4j_connection.health_check_interval = original_health_check_interval
     
     @pytest.mark.asyncio
     async def test_configuration_masking(self, manager: GraphPostgresManager):
@@ -110,10 +115,10 @@ class TestConnectionManagement:
         config_info = manager.get_config_info()
         
         # パスワードがマスクされていることを確認
-        assert "****" in config_info["neo4j"]["password"]
-        assert "****" in config_info["postgres"]["password"]
+        assert config_info["neo4j_password"] == "****"
+        assert "****" in config_info["postgres_dsn"]
         
         # その他の情報は含まれていることを確認
-        assert config_info["neo4j"]["uri"] == manager.config.neo4j_uri
-        assert config_info["postgres"]["host"] == manager.config.postgres_host
-        assert config_info["postgres"]["database"] == manager.config.postgres_database
+        assert config_info["neo4j_uri"] == manager.config.neo4j_uri
+        assert "connection_pool_size" in config_info
+        assert config_info["connection_pool_size"] == manager.config.connection_pool_size

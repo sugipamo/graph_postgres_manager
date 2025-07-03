@@ -8,7 +8,11 @@ from typing import Any
 
 from graph_postgres_manager.config import ConnectionConfig
 from graph_postgres_manager.connections import Neo4jConnection, PostgresConnection
-from graph_postgres_manager.exceptions import DataOperationError, GraphPostgresManagerException, ValidationError
+from graph_postgres_manager.exceptions import (
+    DataOperationError,
+    GraphPostgresManagerException,
+    ValidationError,
+)
 from graph_postgres_manager.intent import IntentManager
 from graph_postgres_manager.metadata import IndexManager, SchemaManager, StatsCollector
 from graph_postgres_manager.models import EdgeType, HealthStatus
@@ -42,6 +46,16 @@ class GraphPostgresManager:
         # For test compatibility
         self._neo4j_conn = self.neo4j
         self._postgres_conn = self.postgres
+    
+    @property
+    def neo4j_connection(self) -> Neo4jConnection:
+        """Get Neo4j connection (for backward compatibility)."""
+        return self.neo4j
+    
+    @property
+    def postgres_connection(self) -> PostgresConnection:
+        """Get PostgreSQL connection (for backward compatibility)."""
+        return self.postgres
     
     async def initialize(self) -> None:
         """Initialize all connections."""
@@ -136,8 +150,8 @@ class GraphPostgresManager:
         
         if not status.is_healthy:
             logger.warning(
-                f"Health check failed - Neo4j: {neo4j_health}, "
-                f"PostgreSQL: {postgres_health}"
+                "Health check failed - Neo4j: %s, PostgreSQL: %s",
+                neo4j_health, postgres_health
             )
         
         return status
@@ -166,7 +180,7 @@ class GraphPostgresManager:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error(f"Error in health check loop: {e}")
+                logger.error("Error in health check loop: %s", e)
     
     async def execute_neo4j_query(
         self,
@@ -571,7 +585,7 @@ class GraphPostgresManager:
             }
             
         except Exception as e:
-            logger.error(f"Failed to store AST graph: {e}")
+            logger.error("Failed to store AST graph: %s", e)
             raise DataOperationError(f"Failed to store AST graph: {e}") from e
     
     def _validate_ast_graph(self, graph_data: dict[str, Any]) -> None:

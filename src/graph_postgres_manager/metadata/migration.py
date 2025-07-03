@@ -36,7 +36,9 @@ class MigrationManager:
             version VARCHAR(50),
             executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             execution_time_ms INTEGER,
-            status VARCHAR(20) CHECK (status IN ('pending', 'running', 'completed', 'failed', 'rolled_back')),
+            status VARCHAR(20) CHECK (
+                status IN ('pending', 'running', 'completed', 'failed', 'rolled_back')
+            ),
             error_message TEXT,
             checksum VARCHAR(64),
             rolled_back_at TIMESTAMP,
@@ -202,7 +204,7 @@ class MigrationManager:
                     error_query,
                     (MigrationStatus.FAILED.value, str(e), migration_id)
                 )
-                raise SchemaError(f"Migration {migration_name} failed: {e}")
+                raise SchemaError(f"Migration {migration_name} failed: {e}") from e
     
     async def apply_all_pending(self) -> list[Migration]:
         """Apply all pending migrations in order.

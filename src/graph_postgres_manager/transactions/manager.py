@@ -93,7 +93,9 @@ class TransactionContext:
     
     async def rollback(self) -> None:
         """トランザクションをロールバック"""
-        if self.state not in (TransactionState.ACTIVE, TransactionState.PREPARING, TransactionState.PREPARED):
+        if self.state not in (
+            TransactionState.ACTIVE, TransactionState.PREPARING, TransactionState.PREPARED
+        ):
             raise TransactionError(f"Cannot rollback transaction in state {self.state}")
         
         self.state = TransactionState.ROLLING_BACK
@@ -109,7 +111,9 @@ class TransactionContext:
                 
                 if self._postgres_tx:
                     try:
-                        await self.manager.postgres_connection.rollback_transaction(self._postgres_tx)
+                        await self.manager.postgres_connection.rollback_transaction(
+                            self._postgres_tx
+                        )
                     except Exception as e:
                         errors.append(f"PostgreSQL rollback error: {e}")
             
@@ -125,21 +129,29 @@ class TransactionContext:
             await self._log_operation("rollback_failed", {"error": str(e)})
             raise
     
-    async def neo4j_execute(self, query: str, parameters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    async def neo4j_execute(
+        self, query: str, parameters: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         """Neo4jでクエリを実行"""
         if self.state != TransactionState.ACTIVE:
             raise TransactionError(f"Cannot execute query in transaction state {self.state}")
         
         await self._log_operation("neo4j_execute", {"query": query, "parameters": parameters})
-        return await self.manager.neo4j_connection.execute_query(query, parameters, transaction=self._neo4j_tx)
+        return await self.manager.neo4j_connection.execute_query(
+            query, parameters, transaction=self._neo4j_tx
+        )
     
-    async def postgres_execute(self, query: str, parameters: list | dict | None = None) -> list[dict[str, Any]]:
+    async def postgres_execute(
+        self, query: str, parameters: list | dict | None = None
+    ) -> list[dict[str, Any]]:
         """PostgreSQLでクエリを実行"""
         if self.state != TransactionState.ACTIVE:
             raise TransactionError(f"Cannot execute query in transaction state {self.state}")
         
         await self._log_operation("postgres_execute", {"query": query, "parameters": parameters})
-        return await self.manager.postgres_connection.execute(query, parameters, transaction=self._postgres_tx)
+        return await self.manager.postgres_connection.execute(
+            query, parameters, transaction=self._postgres_tx
+        )
     
     async def _single_phase_commit(self) -> None:
         """単一フェーズコミット"""
@@ -251,7 +263,7 @@ class TransactionManager:
                 try:
                     async with asyncio.timeout(ctx.timeout):
                         yield ctx
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     await ctx.rollback()
                     raise
             else:
@@ -263,16 +275,23 @@ class TransactionManager:
                 
         except Exception as original_error:
             # エラー発生時、まだロールバックされていなければロールバック
-            if ctx.state in (TransactionState.ACTIVE, TransactionState.PREPARING, TransactionState.PREPARED):
+            if ctx.state in (
+                TransactionState.ACTIVE, TransactionState.PREPARING, TransactionState.PREPARED
+            ):
                 try:
                     await ctx.rollback()
                 except TransactionRollbackError:
                     # TransactionRollbackErrorはそのまま再発生させる
                     raise
                 except Exception as rollback_error:
-                    logger.error(f"Failed to rollback transaction {transaction_id}: {rollback_error}")
+                    logger.error(
+                        "Failed to rollback transaction %s: %s",
+                        transaction_id, rollback_error
+                    )
                     # ロールバックエラーをTransactionRollbackErrorとして再発生
-                    raise TransactionRollbackError(f"Rollback errors: {rollback_error}") from original_error
+                    raise TransactionRollbackError(
+                        f"Rollback errors: {rollback_error}"
+                    ) from original_error
             raise
         finally:
             del self._active_transactions[transaction_id]
@@ -280,7 +299,10 @@ class TransactionManager:
     async def get_transaction_logs(self, transaction_id: str | None = None) -> list[dict[str, Any]]:
         """トランザクションログを取得"""
         if transaction_id:
-            return [log for log in self._transaction_logs if log["transaction_id"] == transaction_id]
+            return [
+                log for log in self._transaction_logs 
+                if log["transaction_id"] == transaction_id
+            ]
         return self._transaction_logs.copy()
     
     async def _save_transaction_log(self, log_entry: dict[str, Any]) -> None:
@@ -303,4 +325,4 @@ class TransactionManager:
                     ]
                 )
             except Exception as e:
-                logger.error(f"Failed to save transaction log: {e}")
+                logger.error("Failed to save transaction log: %s", e)
