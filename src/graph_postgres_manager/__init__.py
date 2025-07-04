@@ -3,7 +3,7 @@
 from graph_postgres_manager.config import ConnectionConfig
 from graph_postgres_manager.exceptions import (
     ConfigurationError,
-    ConnectionError,
+    GraphConnectionError,
     DataOperationError,
     GraphPostgresManagerError,
     HealthCheckError,
@@ -29,7 +29,7 @@ __version__ = "0.1.0"
 __all__ = [
     "ConfigurationError",
     "ConnectionConfig",
-    "ConnectionError",
+    "GraphConnectionError",
     "ConnectionState",
     "DataOperationError",
     "GraphPostgresManager",

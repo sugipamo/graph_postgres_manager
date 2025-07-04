@@ -373,8 +373,8 @@ class MockGraphPostgresManager:
                 node = self._data_store.get_node(node_id)
                 if node:
                     results.append(MockSearchResult(
-                        id=node_id,
-                        type="node",
+                        result_id=node_id,
+                        result_type="node",
                         source="text_search",
                         score=1.0,
                         data=node
@@ -659,7 +659,8 @@ class MockGraphPostgresManager:
     def assert_query_called(self, query: str) -> bool:
         """Assert that a specific query was called."""
         for call in self._call_history:
-            if call["method"] in ["execute_neo4j_query", "execute_postgres_query"] and query in call["args"].get("query", ""):
+            if (call["method"] in ["execute_neo4j_query", "execute_postgres_query"] and 
+                query in call["args"].get("query", "")):
                 return True
         return False
     
@@ -687,6 +688,7 @@ class MockGraphPostgresManager:
             if key == "node_types":
                 if result.type not in value:
                     return False
-            elif key == "source_ids" and result.data.get("properties", {}).get("source_id") not in value:
+            elif (key == "source_ids" and 
+                  result.data.get("properties", {}).get("source_id") not in value):
                 return False
         return True
