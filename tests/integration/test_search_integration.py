@@ -3,7 +3,7 @@
 import pytest
 import pytest_asyncio
 
-from graph_postgres_manager import SearchQuery, SearchType
+from graph_postgres_manager import SearchFilter, SearchQuery, SearchType
 
 
 class TestSearchIntegration:
@@ -94,8 +94,6 @@ class TestSearchIntegration:
     @pytest.mark.asyncio
     async def test_search_with_searchquery_object(self, manager, prepared_data):
         """Test search using SearchQuery object directly."""
-        from graph_postgres_manager import SearchFilter
-        
         query = SearchQuery(
             query="Calculator",
             search_types=[SearchType.GRAPH],

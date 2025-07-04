@@ -22,9 +22,9 @@ def load_test_env():
     if env_file.exists():
         with open(env_file) as f:
             for line in f:
-                line = line.strip()
-                if line and not line.startswith("#") and "=" in line:
-                    key, value = line.split("=", 1)
+                line_stripped = line.strip()
+                if line_stripped and not line_stripped.startswith("#") and "=" in line_stripped:
+                    key, value = line_stripped.split("=", 1)
                     os.environ[key] = value
 
 
@@ -105,8 +105,9 @@ async def clean_postgres(manager: GraphPostgresManager) -> AsyncGenerator[None, 
 
 
 @pytest_asyncio.fixture
-async def clean_databases(_clean_neo4j, _clean_postgres) -> AsyncGenerator[None, None]:
+async def clean_databases(clean_neo4j, clean_postgres) -> AsyncGenerator[None, None]:
     """両方のデータベースをクリーンアップ"""
+    # fixtureの依存関係を確保するために引数を受け取る必要がある
     yield
 
 
@@ -145,8 +146,9 @@ async def wait_for_postgres(config: ConnectionConfig, max_retries: int = 30) -> 
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
-async def wait_for_services(_event_loop):
+async def wait_for_services(event_loop):
     """テスト実行前にサービスが利用可能になるまで待機"""
+    # event_loopは依存関係のために必要
     config = get_test_config()
     
     neo4j_ready = await wait_for_neo4j(config)

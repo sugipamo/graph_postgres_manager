@@ -136,7 +136,7 @@ jobs:
     
     - name: Test Docker Compose setup
       run: |
-        docker-compose up -d
+        docker compose up -d
         sleep 30  # Wait for services to be ready
-        docker-compose ps
-        docker-compose down -v
+        docker compose ps
+        docker compose down -v

@@ -6,15 +6,15 @@ class GraphPostgresManagerError(Exception):
     """Base exception for all graph_postgres_manager exceptions."""
 
 
-class ConnectionException(GraphPostgresManagerError):
+class ConnectionError(GraphPostgresManagerError):
     """Raised when connection-related errors occur."""
 
 
-class Neo4jConnectionError(ConnectionException):
+class Neo4jConnectionError(ConnectionError):
     """Raised when Neo4j connection fails."""
 
 
-class PostgresConnectionError(ConnectionException):
+class PostgresConnectionError(ConnectionError):
     """Raised when PostgreSQL connection fails."""
 
 
@@ -22,7 +22,7 @@ class ConfigurationError(GraphPostgresManagerError):
     """Raised when configuration is invalid."""
 
 
-class PoolExhaustedError(ConnectionException):
+class PoolExhaustedError(ConnectionError):
     """Raised when connection pool is exhausted."""
 
 

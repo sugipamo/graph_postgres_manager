@@ -51,14 +51,14 @@ class MockSearchResult:
     
     def __init__(
         self,
-        id: str,
-        type: str,
+        result_id: str,
+        result_type: str,
         source: str,
         score: float,
         data: dict[str, Any]
     ):
-        self.id = id
-        self.type = type
+        self.id = result_id
+        self.type = result_type
         self.source = source
         self.score = score
         self.data = data
@@ -184,7 +184,7 @@ class MockGraphPostgresManager:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.debug(f"Health check loop error: {e}")
+                logger.debug("Health check loop error: %s", e)
     
     async def execute_neo4j_query(
         self,
@@ -659,9 +659,8 @@ class MockGraphPostgresManager:
     def assert_query_called(self, query: str) -> bool:
         """Assert that a specific query was called."""
         for call in self._call_history:
-            if call["method"] in ["execute_neo4j_query", "execute_postgres_query"]:
-                if query in call["args"].get("query", ""):
-                    return True
+            if call["method"] in ["execute_neo4j_query", "execute_postgres_query"] and query in call["args"].get("query", ""):
+                return True
         return False
     
     def assert_transaction_committed(self) -> bool:
@@ -688,7 +687,6 @@ class MockGraphPostgresManager:
             if key == "node_types":
                 if result.type not in value:
                     return False
-            elif key == "source_ids":
-                if result.data.get("properties", {}).get("source_id") not in value:
-                    return False
+            elif key == "source_ids" and result.data.get("properties", {}).get("source_id") not in value:
+                return False
         return True

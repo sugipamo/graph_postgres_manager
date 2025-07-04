@@ -12,8 +12,9 @@ class TestDataOperations:
     """データ操作のテストクラス"""
     
     @pytest.mark.asyncio
-    async def test_neo4j_node_crud(self, manager: GraphPostgresManager, _clean_neo4j):
-        """Neo4jのノードCRUD操作テスト"""
+    @pytest.mark.usefixtures("clean_neo4j")
+    async def test_neo4j_node_crud(self, manager: GraphPostgresManager):
+        """Neo4jのノードCRUD操作のテスト"""
         # Create
         create_query = """
         CREATE (n:Person {name: $name, age: $age, created_at: datetime()})
@@ -52,7 +53,8 @@ class TestDataOperations:
         assert len(result) == 0
     
     @pytest.mark.asyncio
-    async def test_neo4j_relationship_crud(self, manager: GraphPostgresManager, _clean_neo4j):
+    @pytest.mark.usefixtures("clean_neo4j")
+    async def test_neo4j_relationship_crud(self, manager: GraphPostgresManager):
         """Neo4jのリレーションシップCRUD操作テスト"""
         # Create nodes and relationship
         create_query = """
@@ -97,7 +99,8 @@ class TestDataOperations:
         assert len(result) == 0
     
     @pytest.mark.asyncio
-    async def test_postgres_crud(self, manager: GraphPostgresManager, _clean_postgres):
+    @pytest.mark.usefixtures("clean_postgres")
+    async def test_postgres_crud(self, manager: GraphPostgresManager):
         """PostgreSQLのCRUD操作テスト"""
         # Create
         insert_query = """
@@ -147,7 +150,8 @@ class TestDataOperations:
         assert len(result) == 0
     
     @pytest.mark.asyncio
-    async def test_batch_insert_neo4j(self, manager: GraphPostgresManager, _clean_neo4j):
+    @pytest.mark.usefixtures("clean_neo4j")
+    async def test_batch_insert_neo4j(self, manager: GraphPostgresManager):
         """Neo4jのバッチインサートテスト"""
         # データを準備
         nodes = [
@@ -176,7 +180,8 @@ class TestDataOperations:
         assert count_result[0]["count"] == 100
     
     @pytest.mark.asyncio
-    async def test_batch_insert_postgres(self, manager: GraphPostgresManager, _clean_postgres):
+    @pytest.mark.usefixtures("clean_postgres")
+    async def test_batch_insert_postgres(self, manager: GraphPostgresManager):
         """PostgreSQLのバッチインサートテスト"""
         # データを準備
         data = [
@@ -201,7 +206,8 @@ class TestDataOperations:
         assert count_result[0]["count"] == 100
     
     @pytest.mark.asyncio
-    async def test_large_data_handling(self, manager: GraphPostgresManager, _clean_databases):
+    @pytest.mark.usefixtures("clean_databases")
+    async def test_large_data_handling(self, manager: GraphPostgresManager):
         """大量データの処理テスト"""
         # Neo4jに大量データを作成
         large_nodes = [

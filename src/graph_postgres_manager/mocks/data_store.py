@@ -7,6 +7,7 @@ Neo4j and PostgreSQL databases for testing purposes.
 import time
 import uuid
 from collections import defaultdict
+from datetime import datetime
 from typing import Any
 
 
@@ -451,8 +452,6 @@ class InMemoryDataStore:
         new_confidence: float
     ) -> bool:
         """Update confidence score for a specific mapping."""
-        from datetime import datetime
-        
         for mapping in self.intent_mappings:
             if mapping["intent_id"] == intent_id and mapping["ast_node_id"] == ast_node_id:
                 mapping["confidence"] = new_confidence

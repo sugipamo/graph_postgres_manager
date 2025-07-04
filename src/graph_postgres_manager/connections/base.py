@@ -10,7 +10,7 @@ from typing import Any
 
 from graph_postgres_manager.config import ConnectionConfig
 from graph_postgres_manager.exceptions import (
-    ConnectionException,
+    ConnectionError,
     OperationTimeoutError,
     RetryExhaustedError,
 )
@@ -76,7 +76,7 @@ class BaseConnection(ABC):
             try:
                 if self._circuit_breaker_open:
                     if not self._should_attempt_reconnect():
-                        raise ConnectionException("Circuit breaker is open")
+                        raise ConnectionError("Circuit breaker is open")
                     self._circuit_breaker_open = False
                 
                 await self.connect()

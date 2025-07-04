@@ -58,7 +58,8 @@ class TestConnectionManagement:
         await manager.neo4j_connection.execute_query("MATCH (n:TestNode) DELETE n")
     
     @pytest.mark.asyncio
-    async def test_postgres_connection_pool(self, manager: GraphPostgresManager, _clean_postgres):
+    @pytest.mark.usefixtures("clean_postgres")
+    async def test_postgres_connection_pool(self, manager: GraphPostgresManager):
         """PostgreSQLのコネクションプールテスト"""
         async def insert_data(index: int):
             query = """
@@ -98,7 +99,7 @@ class TestConnectionManagement:
             await manager.neo4j_connection.execute_query("RETURN 1")
             raise AssertionError("Expected exception when driver is None")
         except Exception:
-            pass
+            pass  # Expected exception
         
         # ドライバーを復元して自動再接続をテスト
         manager.neo4j_connection._driver = original_driver

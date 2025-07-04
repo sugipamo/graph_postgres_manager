@@ -4,7 +4,7 @@ import pytest
 
 from graph_postgres_manager import (
     ConfigurationError,
-    ConnectionException,
+    ConnectionError,
     GraphPostgresManagerError,
     HealthCheckError,
     Neo4jConnectionError,
@@ -27,23 +27,23 @@ class TestExceptions:
     def test_connection_exceptions(self):
         """Test connection-related exceptions."""
         # Base connection exception
-        exc = ConnectionException("Connection failed")
+        exc = ConnectionError("Connection failed")
         assert isinstance(exc, GraphPostgresManagerError)
         assert str(exc) == "Connection failed"
         
         # Neo4j specific
         exc = Neo4jConnectionError("Neo4j connection failed")
-        assert isinstance(exc, ConnectionException)
+        assert isinstance(exc, ConnectionError)
         assert isinstance(exc, GraphPostgresManagerError)
         
         # PostgreSQL specific
         exc = PostgresConnectionError("PostgreSQL connection failed")
-        assert isinstance(exc, ConnectionException)
+        assert isinstance(exc, ConnectionError)
         assert isinstance(exc, GraphPostgresManagerError)
         
         # Pool exhausted
         exc = PoolExhaustedError("Pool exhausted")
-        assert isinstance(exc, ConnectionException)
+        assert isinstance(exc, ConnectionError)
     
     def test_configuration_error(self):
         """Test configuration error."""
@@ -65,13 +65,13 @@ class TestExceptions:
     
     def test_retry_exhausted_error(self):
         """Test retry exhausted error with last error."""
-        last_error = ConnectionException("Last connection attempt failed")
+        last_error = ConnectionError("Last connection attempt failed")
         exc = RetryExhaustedError("All retries failed", last_error)
         
         assert isinstance(exc, GraphPostgresManagerError)
         assert str(exc) == "All retries failed"
         assert exc.last_error == last_error
-        assert isinstance(exc.last_error, ConnectionException)
+        assert isinstance(exc.last_error, ConnectionError)
     
     def test_retry_exhausted_error_without_last_error(self):
         """Test retry exhausted error without last error."""
@@ -86,7 +86,7 @@ class TestExceptions:
         
         # Check full inheritance chain
         assert isinstance(exc, Neo4jConnectionError)
-        assert isinstance(exc, ConnectionException)
+        assert isinstance(exc, ConnectionError)
         assert isinstance(exc, GraphPostgresManagerError)
         assert isinstance(exc, Exception)
         
@@ -94,7 +94,7 @@ class TestExceptions:
         with pytest.raises(Neo4jConnectionError):
             raise exc
         
-        with pytest.raises(ConnectionException):
+        with pytest.raises(ConnectionError):
             raise exc
         
         with pytest.raises(GraphPostgresManagerError):
