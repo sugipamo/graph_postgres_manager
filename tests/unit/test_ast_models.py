@@ -144,7 +144,7 @@ class TestEdgeType:
 
     def test_edge_type_invalid_value(self):
         """Test creating EdgeType with invalid value."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="is not a valid EdgeType"):
             EdgeType("INVALID_TYPE")
 
     def test_edge_type_iteration(self):

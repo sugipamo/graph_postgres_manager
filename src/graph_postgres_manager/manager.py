@@ -11,7 +11,7 @@ from graph_postgres_manager.config import ConnectionConfig
 from graph_postgres_manager.connections import Neo4jConnection, PostgresConnection
 from graph_postgres_manager.exceptions import (
     DataOperationError,
-    GraphPostgresManagerException,
+    GraphPostgresManagerError,
     ValidationError,
 )
 from graph_postgres_manager.intent import IntentManager
@@ -203,7 +203,7 @@ class GraphPostgresManager:
             Query results
         """
         if not self._is_initialized:
-            raise GraphPostgresManagerException("Manager not initialized")
+            raise GraphPostgresManagerError("Manager not initialized")
         
         return await self.neo4j.execute_query(query, parameters, database)
     
@@ -224,7 +224,7 @@ class GraphPostgresManager:
             Query results
         """
         if not self._is_initialized:
-            raise GraphPostgresManagerException("Manager not initialized")
+            raise GraphPostgresManagerError("Manager not initialized")
         
         return await self.postgres.execute_query(query, parameters, fetch_all)
     
@@ -247,7 +247,7 @@ class GraphPostgresManager:
             Number of inserted records
         """
         if not self._is_initialized:
-            raise GraphPostgresManagerException("Manager not initialized")
+            raise GraphPostgresManagerError("Manager not initialized")
         
         return await self.neo4j.batch_insert(query, data, batch_size, database)
     
@@ -266,7 +266,7 @@ class GraphPostgresManager:
             Number of affected rows
         """
         if not self._is_initialized:
-            raise GraphPostgresManagerException("Manager not initialized")
+            raise GraphPostgresManagerError("Manager not initialized")
         
         return await self.postgres.execute_many(query, data)
     
@@ -321,10 +321,10 @@ class GraphPostgresManager:
                 await tx.postgres_execute("INSERT INTO nodes (id) VALUES ($1)", [1])
         """
         if not self._is_initialized:
-            raise GraphPostgresManagerException("Manager not initialized")
+            raise GraphPostgresManagerError("Manager not initialized")
         
         if not self._transaction_manager:
-            raise GraphPostgresManagerException("Transaction manager not available")
+            raise GraphPostgresManagerError("Transaction manager not available")
         
         return self._transaction_manager.transaction(timeout)
     
@@ -338,10 +338,10 @@ class GraphPostgresManager:
             SchemaManager instance
             
         Raises:
-            GraphPostgresManagerException: If manager not initialized
+            GraphPostgresManagerError: If manager not initialized
         """
         if not self._is_initialized or not self._schema_manager:
-            raise GraphPostgresManagerException("Manager not initialized")
+            raise GraphPostgresManagerError("Manager not initialized")
         return self._schema_manager
     
     @property
@@ -352,10 +352,10 @@ class GraphPostgresManager:
             IndexManager instance
             
         Raises:
-            GraphPostgresManagerException: If manager not initialized
+            GraphPostgresManagerError: If manager not initialized
         """
         if not self._is_initialized or not self._index_manager:
-            raise GraphPostgresManagerException("Manager not initialized")
+            raise GraphPostgresManagerError("Manager not initialized")
         return self._index_manager
     
     @property
@@ -366,10 +366,10 @@ class GraphPostgresManager:
             StatsCollector instance
             
         Raises:
-            GraphPostgresManagerException: If manager not initialized
+            GraphPostgresManagerError: If manager not initialized
         """
         if not self._is_initialized or not self._stats_collector:
-            raise GraphPostgresManagerException("Manager not initialized")
+            raise GraphPostgresManagerError("Manager not initialized")
         return self._stats_collector
     
     
@@ -381,10 +381,10 @@ class GraphPostgresManager:
             SearchManager instance
             
         Raises:
-            GraphPostgresManagerException: If manager not initialized
+            GraphPostgresManagerError: If manager not initialized
         """
         if not self._is_initialized or not self._search_manager:
-            raise GraphPostgresManagerException("Manager not initialized")
+            raise GraphPostgresManagerError("Manager not initialized")
         return self._search_manager
     
     @property
@@ -395,10 +395,10 @@ class GraphPostgresManager:
             IntentManager instance
             
         Raises:
-            GraphPostgresManagerException: If manager not initialized
+            GraphPostgresManagerError: If manager not initialized
         """
         if not self._is_initialized or not self._intent_manager:
-            raise GraphPostgresManagerException("Manager not initialized")
+            raise GraphPostgresManagerError("Manager not initialized")
         return self._intent_manager
     
     async def get_postgres_schema_info(self, schema_name: str = "public") -> dict[str, Any]:
@@ -411,7 +411,7 @@ class GraphPostgresManager:
             Dictionary with schema information
         """
         if not self._is_initialized:
-            raise GraphPostgresManagerException("Manager not initialized")
+            raise GraphPostgresManagerError("Manager not initialized")
         
         return await self.schema_manager.get_schema_info(schema_name)
     
@@ -425,7 +425,7 @@ class GraphPostgresManager:
             Dictionary with index analysis results
         """
         if not self._is_initialized:
-            raise GraphPostgresManagerException("Manager not initialized")
+            raise GraphPostgresManagerError("Manager not initialized")
         
         return await self.index_manager.analyze_index_usage(schema_name)
     
@@ -439,7 +439,7 @@ class GraphPostgresManager:
             Dictionary with statistics report
         """
         if not self._is_initialized:
-            raise GraphPostgresManagerException("Manager not initialized")
+            raise GraphPostgresManagerError("Manager not initialized")
         
         return await self.stats_collector.generate_report(schema_name)
     
@@ -466,7 +466,7 @@ class GraphPostgresManager:
             DataOperationError: If storage fails
         """
         if not self._is_initialized:
-            raise GraphPostgresManagerException("Manager not initialized")
+            raise GraphPostgresManagerError("Manager not initialized")
         
         start_time = time.time()
         
@@ -705,12 +705,12 @@ class GraphPostgresManager:
             List of SearchResult objects ranked by relevance
             
         Raises:
-            GraphPostgresManagerException: If manager not initialized
+            GraphPostgresManagerError: If manager not initialized
             ValidationError: If inputs are invalid
             DataOperationError: If search fails
         """
         if not self._is_initialized:
-            raise GraphPostgresManagerException("Manager not initialized")
+            raise GraphPostgresManagerError("Manager not initialized")
         
         # Build SearchQuery if string provided
         if isinstance(query, str):
@@ -780,12 +780,12 @@ class GraphPostgresManager:
             - vector_stored: Whether vector was stored
             
         Raises:
-            GraphPostgresManagerException: If manager not initialized
+            GraphPostgresManagerError: If manager not initialized
             ValidationError: If parameters are invalid
             DataOperationError: If the operation fails
         """
         if not self._is_initialized:
-            raise GraphPostgresManagerException("Manager not initialized")
+            raise GraphPostgresManagerError("Manager not initialized")
         
         return await self.intent_manager.link_intent_to_ast(
             intent_id=intent_id,
@@ -811,7 +811,7 @@ class GraphPostgresManager:
             List of AST node information with confidence scores
         """
         if not self._is_initialized:
-            raise GraphPostgresManagerException("Manager not initialized")
+            raise GraphPostgresManagerError("Manager not initialized")
         
         return await self.intent_manager.get_ast_nodes_by_intent(intent_id, min_confidence)
     
@@ -830,7 +830,7 @@ class GraphPostgresManager:
             List of intent information with confidence scores
         """
         if not self._is_initialized:
-            raise GraphPostgresManagerException("Manager not initialized")
+            raise GraphPostgresManagerError("Manager not initialized")
         
         return await self.intent_manager.get_intents_for_ast(ast_node_id, min_confidence)
     
@@ -853,7 +853,7 @@ class GraphPostgresManager:
             List of matching AST nodes with similarity scores
         """
         if not self._is_initialized:
-            raise GraphPostgresManagerException("Manager not initialized")
+            raise GraphPostgresManagerError("Manager not initialized")
         
         return await self.intent_manager.search_ast_by_intent_vector(
             intent_vector=intent_vector,
@@ -878,7 +878,7 @@ class GraphPostgresManager:
             True if updated successfully
         """
         if not self._is_initialized:
-            raise GraphPostgresManagerException("Manager not initialized")
+            raise GraphPostgresManagerError("Manager not initialized")
         
         return await self.intent_manager.update_intent_confidence(
             intent_id=intent_id,
@@ -901,7 +901,7 @@ class GraphPostgresManager:
             Number of mappings removed
         """
         if not self._is_initialized:
-            raise GraphPostgresManagerException("Manager not initialized")
+            raise GraphPostgresManagerError("Manager not initialized")
         
         return await self.intent_manager.remove_intent_mapping(
             intent_id=intent_id,

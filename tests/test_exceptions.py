@@ -5,7 +5,7 @@ import pytest
 from graph_postgres_manager import (
     ConfigurationError,
     ConnectionException,
-    GraphPostgresManagerException,
+    GraphPostgresManagerError,
     HealthCheckError,
     Neo4jConnectionError,
     OperationTimeoutError,
@@ -20,7 +20,7 @@ class TestExceptions:
     
     def test_base_exception(self):
         """Test base exception."""
-        exc = GraphPostgresManagerException("Base error")
+        exc = GraphPostgresManagerError("Base error")
         assert str(exc) == "Base error"
         assert isinstance(exc, Exception)
     
@@ -28,18 +28,18 @@ class TestExceptions:
         """Test connection-related exceptions."""
         # Base connection exception
         exc = ConnectionException("Connection failed")
-        assert isinstance(exc, GraphPostgresManagerException)
+        assert isinstance(exc, GraphPostgresManagerError)
         assert str(exc) == "Connection failed"
         
         # Neo4j specific
         exc = Neo4jConnectionError("Neo4j connection failed")
         assert isinstance(exc, ConnectionException)
-        assert isinstance(exc, GraphPostgresManagerException)
+        assert isinstance(exc, GraphPostgresManagerError)
         
         # PostgreSQL specific
         exc = PostgresConnectionError("PostgreSQL connection failed")
         assert isinstance(exc, ConnectionException)
-        assert isinstance(exc, GraphPostgresManagerException)
+        assert isinstance(exc, GraphPostgresManagerError)
         
         # Pool exhausted
         exc = PoolExhaustedError("Pool exhausted")
@@ -48,19 +48,19 @@ class TestExceptions:
     def test_configuration_error(self):
         """Test configuration error."""
         exc = ConfigurationError("Invalid config")
-        assert isinstance(exc, GraphPostgresManagerException)
+        assert isinstance(exc, GraphPostgresManagerError)
         assert str(exc) == "Invalid config"
     
     def test_health_check_error(self):
         """Test health check error."""
         exc = HealthCheckError("Health check failed")
-        assert isinstance(exc, GraphPostgresManagerException)
+        assert isinstance(exc, GraphPostgresManagerError)
         assert str(exc) == "Health check failed"
     
     def test_operation_timeout_error(self):
         """Test operation timeout error."""
         exc = OperationTimeoutError("Operation timed out")
-        assert isinstance(exc, GraphPostgresManagerException)
+        assert isinstance(exc, GraphPostgresManagerError)
         assert str(exc) == "Operation timed out"
     
     def test_retry_exhausted_error(self):
@@ -68,7 +68,7 @@ class TestExceptions:
         last_error = ConnectionException("Last connection attempt failed")
         exc = RetryExhaustedError("All retries failed", last_error)
         
-        assert isinstance(exc, GraphPostgresManagerException)
+        assert isinstance(exc, GraphPostgresManagerError)
         assert str(exc) == "All retries failed"
         assert exc.last_error == last_error
         assert isinstance(exc.last_error, ConnectionException)
@@ -87,7 +87,7 @@ class TestExceptions:
         # Check full inheritance chain
         assert isinstance(exc, Neo4jConnectionError)
         assert isinstance(exc, ConnectionException)
-        assert isinstance(exc, GraphPostgresManagerException)
+        assert isinstance(exc, GraphPostgresManagerError)
         assert isinstance(exc, Exception)
         
         # Ensure it can be caught at any level
@@ -97,8 +97,8 @@ class TestExceptions:
         with pytest.raises(ConnectionException):
             raise exc
         
-        with pytest.raises(GraphPostgresManagerException):
+        with pytest.raises(GraphPostgresManagerError):
             raise exc
         
-        with pytest.raises(Exception):
+        with pytest.raises(GraphPostgresManagerError):
             raise exc

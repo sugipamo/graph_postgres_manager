@@ -10,7 +10,7 @@ from typing import Any
 
 from graph_postgres_manager.connections.neo4j import Neo4jConnection
 from graph_postgres_manager.connections.postgres import PostgresConnection
-from graph_postgres_manager.exceptions import GraphPostgresManagerException
+from graph_postgres_manager.exceptions import GraphPostgresManagerError
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class TransactionState(Enum):
     FAILED = "failed"
 
 
-class TransactionError(GraphPostgresManagerException):
+class TransactionError(GraphPostgresManagerError):
     """トランザクション関連のエラー"""
 
 

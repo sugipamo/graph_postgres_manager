@@ -85,7 +85,7 @@ class TestTransactionIntegration:
         """Test transaction rollback when error occurs."""
         node_id = "test-node-2"
         
-        with pytest.raises(Exception):
+        with pytest.raises(Exception, match="Simulated error"):
             async with transaction_manager.transaction() as tx:
                 # Create node in Neo4j
                 await tx.neo4j_execute(
@@ -190,7 +190,7 @@ class TestTransactionIntegration:
         """Test transaction timeout."""
         node_id = "test-node-timeout"
         
-        with pytest.raises(asyncio.TimeoutError):
+        async def long_running_transaction():
             async with transaction_manager.transaction(timeout=0.5) as tx:
                 # Create node in Neo4j
                 await tx.neo4j_execute(
@@ -206,6 +206,9 @@ class TestTransactionIntegration:
                     "INSERT INTO transaction_test (node_id) VALUES (%(node_id)s)",
                     {"node_id": node_id}
                 )
+        
+        with pytest.raises(asyncio.TimeoutError):
+            await long_running_transaction()
         
         # Verify transaction was rolled back
         neo4j_result = await transaction_manager.execute_neo4j_query(

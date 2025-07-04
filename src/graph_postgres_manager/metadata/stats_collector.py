@@ -1,6 +1,7 @@
 """Statistics collection functionality for PostgreSQL."""
 
 import asyncio
+import contextlib
 import hashlib
 import re
 from datetime import datetime, timedelta
@@ -535,11 +536,9 @@ class StatsCollector:
                 await self.collect_table_stats(schema_name)
                 
                 # Try to collect query patterns
-                try:
-                    await self.analyze_query_patterns()
-                except MetadataError:
+                with contextlib.suppress(MetadataError):
                     # pg_stat_statements not available
-                    pass
+                    await self.analyze_query_patterns()
                 
                 self._last_collection_time = datetime.now()
                 

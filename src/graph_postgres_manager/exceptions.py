@@ -2,11 +2,11 @@
 
 
 
-class GraphPostgresManagerException(Exception):
+class GraphPostgresManagerError(Exception):
     """Base exception for all graph_postgres_manager exceptions."""
 
 
-class ConnectionException(GraphPostgresManagerException):
+class ConnectionException(GraphPostgresManagerError):
     """Raised when connection-related errors occur."""
 
 
@@ -18,7 +18,7 @@ class PostgresConnectionError(ConnectionException):
     """Raised when PostgreSQL connection fails."""
 
 
-class ConfigurationError(GraphPostgresManagerException):
+class ConfigurationError(GraphPostgresManagerError):
     """Raised when configuration is invalid."""
 
 
@@ -26,15 +26,15 @@ class PoolExhaustedError(ConnectionException):
     """Raised when connection pool is exhausted."""
 
 
-class HealthCheckError(GraphPostgresManagerException):
+class HealthCheckError(GraphPostgresManagerError):
     """Raised when health check fails."""
 
 
-class OperationTimeoutError(GraphPostgresManagerException):
+class OperationTimeoutError(GraphPostgresManagerError):
     """Raised when operation times out."""
 
 
-class RetryExhaustedError(GraphPostgresManagerException):
+class RetryExhaustedError(GraphPostgresManagerError):
     """Raised when all retry attempts are exhausted."""
     
     def __init__(self, message: str, last_error: Exception | None = None):
@@ -42,17 +42,17 @@ class RetryExhaustedError(GraphPostgresManagerException):
         self.last_error = last_error
 
 
-class SchemaError(GraphPostgresManagerException):
+class SchemaError(GraphPostgresManagerError):
     """Raised when schema-related operations fail."""
 
 
-class MetadataError(GraphPostgresManagerException):
+class MetadataError(GraphPostgresManagerError):
     """Raised when metadata operations fail."""
 
 
-class ValidationError(GraphPostgresManagerException):
+class ValidationError(GraphPostgresManagerError):
     """Raised when data validation fails."""
 
 
-class DataOperationError(GraphPostgresManagerException):
+class DataOperationError(GraphPostgresManagerError):
     """Raised when data operations fail."""

@@ -203,7 +203,7 @@ class TestDataOperations:
     @pytest.mark.asyncio
     async def test_large_data_handling(self, manager: GraphPostgresManager, _clean_databases):
         """大量データの処理テスト"""
-        # Neo4jに大量ノードを作成
+        # Neo4jに大量データを作成
         large_nodes = [
             {
                 "id": i,

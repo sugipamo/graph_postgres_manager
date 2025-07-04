@@ -88,7 +88,7 @@ class TestConnectionManagement:
         # 正常なクエリを実行
         await manager.neo4j_connection.execute_query("RETURN 1")
         
-        # 接続を強制的に閉じる（実際のテストでは接続障害をシミュレート）
+        # 接続を強制的に閉じる(実際のテストでは接続障害をシミュレート)
         # Neo4jのドライバーを一時的に無効化
         original_driver = manager.neo4j_connection._driver
         manager.neo4j_connection._driver = None

@@ -109,8 +109,16 @@ async def example_search_functionality():
         graphs = [
             {
                 "nodes": [
-                    {"id": "1", "labels": ["Function"], "properties": {"name": "process_user_data"}},
-                    {"id": "2", "labels": ["Function"], "properties": {"name": "validate_user_input"}},
+                    {
+                        "id": "1",
+                        "labels": ["Function"],
+                        "properties": {"name": "process_user_data"}
+                    },
+                    {
+                        "id": "2",
+                        "labels": ["Function"],
+                        "properties": {"name": "validate_user_input"}
+                    },
                 ],
                 "edges": []
             },
@@ -148,7 +156,7 @@ async def example_transaction_management():
     async with MockGraphPostgresManager() as manager:
         # Successful transaction
         try:
-            async with manager.transaction() as tx:
+            async with manager.transaction():
                 # Create related data in both databases
                 await manager.execute_neo4j_query(
                     "CREATE (u:User {id: $id, name: $name})",

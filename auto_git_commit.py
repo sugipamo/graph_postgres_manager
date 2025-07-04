@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -23,19 +24,39 @@ import subprocess
 import sys
 
 try:
+    # gitコマンドの完全パスを取得
+    git_path = shutil.which("git")
+    if not git_path:
+        sys.exit(1)
+    
     # 変更があるか確認
     status = subprocess.run(
-        ["git", "status", "--porcelain"],
+        [git_path, "status", "--porcelain"],
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
         check=True
     )
 
     if status.stdout.strip():  # 変更があれば
-        subprocess.run(["git", "add", "."], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run(["git", "commit", "-m", "Auto commit"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(
+            [git_path, "add", "."],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        subprocess.run(
+            [git_path, "commit", "-m", "Auto commit"],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
 
-    subprocess.run(["git", "push"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+    subprocess.run(
+        [git_path, "push"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=True
+    )
 
 except subprocess.CalledProcessError:
     sys.exit(1)

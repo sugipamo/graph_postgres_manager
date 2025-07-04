@@ -2,6 +2,7 @@
 統合テスト用のフィクスチャとヘルパー関数
 """
 import asyncio
+import contextlib
 import os
 from collections.abc import AsyncGenerator, Generator
 from pathlib import Path
@@ -72,47 +73,39 @@ async def manager() -> AsyncGenerator[GraphPostgresManager, None]:
 @pytest_asyncio.fixture
 async def clean_neo4j(manager: GraphPostgresManager) -> AsyncGenerator[None, None]:
     """各テスト前後でNeo4jデータベースをクリーンアップ"""
-    # テスト前のクリーンアップ（前回の実行データを削除）
-    try:
-        await manager.neo4j.execute_query("MATCH (n) DETACH DELETE n")
-    except Exception:
+    # テスト前のクリーンアップ(前回の実行データを削除)
+    with contextlib.suppress(Exception):
         # エラーは無視
-        pass
+        await manager.neo4j.execute_query("MATCH (n) DETACH DELETE n")
     
     yield
     
     # テスト後のクリーンアップ
-    try:
-        await manager.neo4j.execute_query("MATCH (n) DETACH DELETE n")
-    except Exception:
+    with contextlib.suppress(Exception):
         # エラーは無視
-        pass
+        await manager.neo4j.execute_query("MATCH (n) DETACH DELETE n")
 
 
 @pytest_asyncio.fixture
 async def clean_postgres(manager: GraphPostgresManager) -> AsyncGenerator[None, None]:
     """各テスト前後でPostgreSQLデータベースをクリーンアップ"""
-    # テスト前のクリーンアップ（前回の実行データを削除）
-    try:
+    # テスト前のクリーンアップ(前回の実行データを削除)
+    with contextlib.suppress(Exception):
+        # テーブルが存在しない場合は無視
         await manager.postgres.execute_query(
             "DELETE FROM graph_data.metadata WHERE key LIKE 'test_key_%%'"
         )
-    except Exception:
-        # テーブルが存在しない場合は無視
-        pass
     
     yield
     
     # テスト後のクリーンアップ
-    try:
-        await manager.postgres.execute_query("TRUNCATE TABLE graph_data.metadata CASCADE")
-    except Exception:
+    with contextlib.suppress(Exception):
         # テーブルが存在しない場合は無視
-        pass
+        await manager.postgres.execute_query("TRUNCATE TABLE graph_data.metadata CASCADE")
 
 
 @pytest_asyncio.fixture
-async def clean_databases(clean_neo4j, clean_postgres) -> AsyncGenerator[None, None]:
+async def clean_databases(_clean_neo4j, _clean_postgres) -> AsyncGenerator[None, None]:
     """両方のデータベースをクリーンアップ"""
     yield
 
@@ -152,7 +145,7 @@ async def wait_for_postgres(config: ConnectionConfig, max_retries: int = 30) -> 
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
-async def wait_for_services(event_loop):
+async def wait_for_services(_event_loop):
     """テスト実行前にサービスが利用可能になるまで待機"""
     config = get_test_config()
     

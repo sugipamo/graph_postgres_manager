@@ -1,5 +1,6 @@
 """Unit tests for IntentManager."""
 
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, call
 
 import pytest
@@ -297,5 +298,4 @@ class TestIntentManager:
         assert mock_postgres.execute.call_args_list[-1] == call("COMMIT")
 
 
-# Import datetime for test
-from datetime import datetime
+# datetime already imported at the top
